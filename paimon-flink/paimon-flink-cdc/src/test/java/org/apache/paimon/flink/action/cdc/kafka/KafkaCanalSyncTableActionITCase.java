@@ -1172,16 +1172,16 @@ public class KafkaCanalSyncTableActionITCase extends KafkaSyncTableActionITCase 
         RowType rowType =
                 RowType.of(
                         new DataType[] {DataTypes.INT().notNull(), DataTypes.VARCHAR(10)},
-                        new String[] {"k", "v"});
+                        new String[] {"pt", "k", "v"});
         waitForResult(
-                Collections.singletonList("+I[1, one]"),
+                Collections.singletonList("+I[1, 1, one]"),
                 getFileStoreTable(tableName),
                 rowType,
                 Collections.singletonList("k"));
 
         writeRecordsToKafka(topic, "kafka/canal/table/typenochange/canal-data-2.txt");
         waitForResult(
-                Arrays.asList("+I[1, one]", "+I[2, two]"),
+                Arrays.asList("+I[1, 1, one]", "+I[1, 2, two]"),
                 getFileStoreTable(tableName),
                 rowType, // should not change
                 Collections.singletonList("k"));
