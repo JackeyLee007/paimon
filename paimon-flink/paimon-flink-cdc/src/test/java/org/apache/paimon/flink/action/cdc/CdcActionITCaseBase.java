@@ -149,6 +149,8 @@ public class CdcActionITCaseBase extends ActionITCaseBase {
                 }
             }
             table = table.copyWithLatestSchema();
+            LOG.info("Schema actual: " + table.toString());
+            LOG.info("Schema expected: " + rowType.toString());
             Thread.sleep(1000);
         }
 
@@ -168,8 +170,8 @@ public class CdcActionITCaseBase extends ActionITCaseBase {
             if (sortedExpected.equals(sortedActual)) {
                 break;
             }
-            LOG.info("actual: " + sortedActual);
-            LOG.info("expected: " + sortedExpected);
+            LOG.info("Data actual: " + sortedActual);
+            LOG.info("Data expected: " + sortedExpected);
             Thread.sleep(1000);
         }
     }
