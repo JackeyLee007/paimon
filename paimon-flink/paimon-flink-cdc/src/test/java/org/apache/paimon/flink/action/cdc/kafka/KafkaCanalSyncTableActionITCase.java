@@ -49,7 +49,7 @@ import static org.apache.flink.streaming.connectors.kafka.table.KafkaConnectorOp
 import static org.apache.flink.streaming.connectors.kafka.table.KafkaConnectorOptions.TOPIC;
 import static org.apache.flink.streaming.connectors.kafka.table.KafkaConnectorOptions.TOPIC_PATTERN;
 import static org.apache.flink.streaming.connectors.kafka.table.KafkaConnectorOptions.VALUE_FORMAT;
-import static org.apache.paimon.flink.action.cdc.TypeMapping.TypeMappingMode.DECIMAL_NO_CHANGE;
+import static org.apache.paimon.flink.action.cdc.TypeMapping.TypeMappingMode.NO_CHANGE;
 import static org.apache.paimon.flink.action.cdc.TypeMapping.TypeMappingMode.TO_STRING;
 import static org.apache.paimon.testutils.assertj.PaimonAssertions.anyCauseMatches;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -1164,7 +1164,7 @@ public class KafkaCanalSyncTableActionITCase extends KafkaSyncTableActionITCase 
         KafkaSyncTableAction action =
                 syncTableActionBuilder(kafkaConfig)
                         .withTableConfig(getBasicTableConfig())
-                        .withTypeMappingModes(DECIMAL_NO_CHANGE.configString())
+                        .withTypeMappingModes(NO_CHANGE.configString())
                         .build();
         runActionWithDefaultEnv(action);
 
