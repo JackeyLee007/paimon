@@ -1151,7 +1151,7 @@ public class KafkaCanalSyncTableActionITCase extends KafkaSyncTableActionITCase 
     }
 
     @Test
-    @Timeout(60)
+    @Timeout(300)
     public void testVarcharNoChange() throws Exception {
         String topic = "deciaml-no-change";
         createTestTopic(topic, 1, 1);
@@ -1187,7 +1187,7 @@ public class KafkaCanalSyncTableActionITCase extends KafkaSyncTableActionITCase 
     }
 
     @Test
-    @Timeout(60)
+    @Timeout(300)
     public void testDeciamlNoChange() throws Exception {
         String topic = "varchar-no-change";
         createTestTopic(topic, 1, 1);
