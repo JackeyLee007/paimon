@@ -149,8 +149,8 @@ public class CdcActionITCaseBase extends ActionITCaseBase {
                 }
             }
             table = table.copyWithLatestSchema();
-            LOG.info("Schema actual: " + table.toString());
-            LOG.info("Schema expected: " + rowType.toString());
+            LOG.warn("Schema actual: " + table.toString());
+            LOG.warn("Schema expected: " + rowType.toString());
             Thread.sleep(1000);
         }
 
