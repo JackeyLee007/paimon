@@ -16,4 +16,4 @@
  * limitations under the License.
  */
 
-{"data":[{"pt":"1","_id":"2","v1":"two"}],"database":"paimon_sync_table","es":1683006724000,"id":94,"isDdl":false,"mysqlType":{"pt":"INT","_id":"INT","v1":"VARCHAR(20)"},"old":null,"pkNames":["_id"],"sql":"","sqlType":{"pt":4,"_id":4,"v1":12},"table":"schema_evolution_2","ts":1683006724404,"type":"INSERT"}
+{"data":[{"pt":"1","k":"2","v":"two"}],"database":"paimon_sync_table","es":1683006724000,"id":94,"isDdl":false,"mysqlType":{"pt":"INT","k":"INT","v":"VARCHAR(20)"},"old":null,"pkNames":["k"],"sql":"","sqlType":{"pt":4,"k":4,"v":12},"table":"schema_evolution_2","ts":1683006724404,"type":"INSERT"}
