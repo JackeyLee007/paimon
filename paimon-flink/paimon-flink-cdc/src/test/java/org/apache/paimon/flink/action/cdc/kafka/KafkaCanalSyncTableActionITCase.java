@@ -50,7 +50,6 @@ import static org.apache.flink.streaming.connectors.kafka.table.KafkaConnectorOp
 import static org.apache.flink.streaming.connectors.kafka.table.KafkaConnectorOptions.TOPIC_PATTERN;
 import static org.apache.flink.streaming.connectors.kafka.table.KafkaConnectorOptions.VALUE_FORMAT;
 import static org.apache.paimon.flink.action.cdc.TypeMapping.TypeMappingMode.DECIMAL_NO_CHANGE;
-import static org.apache.paimon.flink.action.cdc.TypeMapping.TypeMappingMode.NO_CHANGE;
 import static org.apache.paimon.flink.action.cdc.TypeMapping.TypeMappingMode.TO_STRING;
 import static org.apache.paimon.testutils.assertj.PaimonAssertions.anyCauseMatches;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -1152,7 +1151,7 @@ public class KafkaCanalSyncTableActionITCase extends KafkaSyncTableActionITCase 
     }
 
     @Test
-    @Timeout(300)
+    @Timeout(60)
     public void testDecimalNoChange() throws Exception {
         String topic = "varchar-no-change";
         createTestTopic(topic, 1, 1);
