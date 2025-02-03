@@ -71,6 +71,22 @@ public class PartitionSettedRow implements InternalRow {
     }
 
     @Override
+    public Timestamp getCreateTime() {
+        return null;
+    }
+
+    @Override
+    public void setCreateTime(Timestamp createTime) {}
+
+    @Override
+    public Timestamp getUpdateTime() {
+        return null;
+    }
+
+    @Override
+    public void setUpdateTime(Timestamp updateTime) {}
+
+    @Override
     public boolean isNullAt(int pos) {
         return partitionInfo.inPartitionRow(pos)
                 ? partition.isNullAt(partitionInfo.getRealIndex(pos))

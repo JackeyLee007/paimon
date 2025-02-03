@@ -111,6 +111,14 @@ public interface InternalRow extends DataGetters {
      */
     void setRowKind(RowKind kind);
 
+    Timestamp getCreateTime();
+
+    void setCreateTime(Timestamp createTime);
+
+    Timestamp getUpdateTime();
+
+    void setUpdateTime(Timestamp updateTime);
+
     // ------------------------------------------------------------------------------------------
     // Access Utilities
     // ------------------------------------------------------------------------------------------

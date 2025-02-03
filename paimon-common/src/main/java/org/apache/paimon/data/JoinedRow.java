@@ -118,6 +118,22 @@ public class JoinedRow implements InternalRow {
     }
 
     @Override
+    public Timestamp getCreateTime() {
+        return null;
+    }
+
+    @Override
+    public void setCreateTime(Timestamp createTime) {}
+
+    @Override
+    public Timestamp getUpdateTime() {
+        return null;
+    }
+
+    @Override
+    public void setUpdateTime(Timestamp updateTime) {}
+
+    @Override
     public boolean isNullAt(int pos) {
         if (pos < row1.getFieldCount()) {
             return row1.isNullAt(pos);

@@ -82,6 +82,12 @@ public class SpecialFields {
     public static final DataField LEVEL =
             new DataField(Integer.MAX_VALUE - 3, "_LEVEL", DataTypes.INT().notNull());
 
+    public static final DataField CREATE_TIME =
+            new DataField(Integer.MAX_VALUE - 4, "_CREATE_TIME", DataTypes.TIMESTAMP().notNull());
+
+    public static final DataField UPDATE_TIME =
+            new DataField(Integer.MAX_VALUE - 5, "_UPDATE_TIME", DataTypes.TIMESTAMP().notNull());
+
     // only used by AuditLogTable
     public static final DataField ROW_KIND =
             new DataField(

@@ -40,6 +40,8 @@ public class ValueContentRowDataRecordIterator extends ResetRowKindRecordIterato
 
         InternalRow rowData = kv.value();
         rowData.setRowKind(kv.valueKind());
+        rowData.setCreateTime(kv.createTime());
+        rowData.setUpdateTime(kv.updateTime());
         return rowData;
     }
 }

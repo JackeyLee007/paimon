@@ -24,6 +24,7 @@ import org.apache.paimon.consumer.ConsumerManager;
 import org.apache.paimon.data.BinaryRow;
 import org.apache.paimon.data.BinaryString;
 import org.apache.paimon.data.InternalRow;
+import org.apache.paimon.data.Timestamp;
 import org.apache.paimon.disk.IOManager;
 import org.apache.paimon.fs.FileIO;
 import org.apache.paimon.fs.Path;
@@ -139,6 +140,8 @@ public class AuditLogTable implements DataTable, ReadonlyTable {
     public RowType rowType() {
         List<DataField> fields = new ArrayList<>();
         fields.add(SpecialFields.ROW_KIND);
+        fields.add(SpecialFields.CREATE_TIME);
+        fields.add(SpecialFields.UPDATE_TIME);
         fields.addAll(wrapped.rowType().getFields());
         return new RowType(fields);
     }
@@ -570,10 +573,13 @@ public class AuditLogTable implements DataTable, ReadonlyTable {
         /** Default projection, just add row kind to the first. */
         private int[] defaultProjection() {
             int dataFieldCount = wrapped.rowType().getFieldCount();
-            int[] projection = new int[dataFieldCount + 1];
-            projection[0] = -1;
+            int[] projection = new int[dataFieldCount + 3];
+            projection[0] = -1; // rowkind
+            projection[1] = -2; // _create_time
+            projection[2] = -3; // _update_time
+
             for (int i = 0; i < dataFieldCount; i++) {
-                projection[i + 1] = i;
+                projection[i + 3] = i;
             }
             return projection;
         }
@@ -663,6 +669,17 @@ public class AuditLogTable implements DataTable, ReadonlyTable {
                 return BinaryString.fromString(row.getRowKind().shortString());
             }
             return super.getString(pos);
+        }
+
+        @Override
+        public Timestamp getTimestamp(int pos, int precision) {
+            if (indexMapping[pos] == -2) {
+                return row.getCreateTime();
+            }
+            if (indexMapping[pos] == -3) {
+                return row.getUpdateTime();
+            }
+            return row.getTimestamp(indexMapping[pos], precision);
         }
     }
 }

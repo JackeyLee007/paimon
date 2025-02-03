@@ -72,6 +72,22 @@ public final class SafeBinaryRow implements InternalRow {
     }
 
     @Override
+    public Timestamp getCreateTime() {
+        return null;
+    }
+
+    @Override
+    public void setCreateTime(Timestamp createTime) {}
+
+    @Override
+    public Timestamp getUpdateTime() {
+        return null;
+    }
+
+    @Override
+    public void setUpdateTime(Timestamp updateTime) {}
+
+    @Override
     public boolean isNullAt(int pos) {
         int index = pos + HEADER_SIZE_IN_BITS;
         int offset = this.offset + byteIndex(index);

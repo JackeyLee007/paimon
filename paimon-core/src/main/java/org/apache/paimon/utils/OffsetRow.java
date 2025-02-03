@@ -62,6 +62,26 @@ public class OffsetRow implements InternalRow {
     }
 
     @Override
+    public Timestamp getCreateTime() {
+        return row.getCreateTime();
+    }
+
+    @Override
+    public void setCreateTime(Timestamp createTime) {
+        row.setCreateTime(createTime);
+    }
+
+    @Override
+    public Timestamp getUpdateTime() {
+        return row.getUpdateTime();
+    }
+
+    @Override
+    public void setUpdateTime(Timestamp updateTime) {
+        row.setUpdateTime(updateTime);
+    }
+
+    @Override
     public boolean isNullAt(int pos) {
         return row.isNullAt(offset + pos);
     }

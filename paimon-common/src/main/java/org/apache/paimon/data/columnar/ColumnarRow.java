@@ -39,6 +39,8 @@ public final class ColumnarRow implements InternalRow, DataSetters, Serializable
     private static final long serialVersionUID = 1L;
 
     private RowKind rowKind = RowKind.INSERT;
+    private Timestamp createTime;
+    private Timestamp updateTime;
     private VectorizedColumnBatch vectorizedColumnBatch;
     private int rowId;
 
@@ -74,6 +76,26 @@ public final class ColumnarRow implements InternalRow, DataSetters, Serializable
     @Override
     public void setRowKind(RowKind kind) {
         this.rowKind = kind;
+    }
+
+    @Override
+    public Timestamp getCreateTime() {
+        return this.createTime;
+    }
+
+    @Override
+    public void setCreateTime(Timestamp createTime) {
+        this.createTime = createTime;
+    }
+
+    @Override
+    public Timestamp getUpdateTime() {
+        return this.updateTime;
+    }
+
+    @Override
+    public void setUpdateTime(Timestamp updateTime) {
+        this.updateTime = updateTime;
     }
 
     @Override

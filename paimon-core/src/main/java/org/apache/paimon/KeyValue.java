@@ -20,6 +20,7 @@ package org.apache.paimon;
 
 import org.apache.paimon.annotation.VisibleForTesting;
 import org.apache.paimon.data.InternalRow;
+import org.apache.paimon.data.Timestamp;
 import org.apache.paimon.data.serializer.InternalRowSerializer;
 import org.apache.paimon.types.DataField;
 import org.apache.paimon.types.RowKind;
@@ -31,8 +32,10 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import static org.apache.paimon.table.SpecialFields.CREATE_TIME;
 import static org.apache.paimon.table.SpecialFields.LEVEL;
 import static org.apache.paimon.table.SpecialFields.SEQUENCE_NUMBER;
+import static org.apache.paimon.table.SpecialFields.UPDATE_TIME;
 import static org.apache.paimon.table.SpecialFields.VALUE_KIND;
 
 /**
@@ -48,6 +51,8 @@ public class KeyValue {
     // determined after written into memory table or read from file
     private long sequenceNumber;
     private RowKind valueKind;
+    private Timestamp createTime;
+    private Timestamp updateTime;
     private InternalRow value;
     // determined after read from file
     private int level;
@@ -61,6 +66,23 @@ public class KeyValue {
         this.key = key;
         this.sequenceNumber = sequenceNumber;
         this.valueKind = valueKind;
+        this.value = value;
+        this.level = UNKNOWN_LEVEL;
+        return this;
+    }
+
+    public KeyValue replace(
+            InternalRow key,
+            long sequenceNumber,
+            RowKind valueKind,
+            Timestamp createTime,
+            Timestamp updateTime,
+            InternalRow value) {
+        this.key = key;
+        this.sequenceNumber = sequenceNumber;
+        this.valueKind = valueKind;
+        this.createTime = createTime;
+        this.updateTime = updateTime;
         this.value = value;
         this.level = UNKNOWN_LEVEL;
         return this;
@@ -91,6 +113,14 @@ public class KeyValue {
 
     public RowKind valueKind() {
         return valueKind;
+    }
+
+    public Timestamp createTime() {
+        return createTime;
+    }
+
+    public Timestamp updateTime() {
+        return updateTime;
     }
 
     public boolean isAdd() {
@@ -133,6 +163,8 @@ public class KeyValue {
         fields.addAll(keyFields);
         fields.add(SEQUENCE_NUMBER);
         fields.add(VALUE_KIND);
+        fields.add(CREATE_TIME);
+        fields.add(UPDATE_TIME);
         fields.addAll(valueFields);
         return fields;
     }

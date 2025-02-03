@@ -71,6 +71,22 @@ public final class NestedRow extends BinarySection implements InternalRow, DataS
         MemorySegmentUtils.setByte(segments, offset, kind.toByteValue());
     }
 
+    @Override
+    public Timestamp getCreateTime() {
+        return null;
+    }
+
+    @Override
+    public void setCreateTime(Timestamp createTime) {}
+
+    @Override
+    public Timestamp getUpdateTime() {
+        return null;
+    }
+
+    @Override
+    public void setUpdateTime(Timestamp updateTime) {}
+
     private void setNotNullAt(int i) {
         assertIndexIsValid(i);
         MemorySegmentUtils.bitUnSet(segments, offset, i + 8);

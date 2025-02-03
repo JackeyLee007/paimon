@@ -21,6 +21,7 @@ package org.apache.paimon;
 import org.apache.paimon.data.GenericRow;
 import org.apache.paimon.data.InternalRow;
 import org.apache.paimon.data.JoinedRow;
+import org.apache.paimon.data.Timestamp;
 import org.apache.paimon.types.RowKind;
 import org.apache.paimon.types.RowType;
 import org.apache.paimon.utils.ObjectSerializer;
@@ -51,12 +52,12 @@ public class KeyValueSerializer extends ObjectSerializer<KeyValue> {
         this.keyArity = keyType.getFieldCount();
         int valueArity = valueType.getFieldCount();
 
-        this.reusedMeta = new GenericRow(2);
+        this.reusedMeta = new GenericRow(4); // sequenceNumber, valueKind, createTime, updateTime
         this.reusedKeyWithMeta = new JoinedRow();
         this.reusedRow = new JoinedRow();
 
         this.reusedKey = new OffsetRow(keyArity, 0);
-        this.reusedValue = new OffsetRow(valueArity, keyArity + 2);
+        this.reusedValue = new OffsetRow(valueArity, keyArity + 4);
         this.reusedKv = new KeyValue().replace(reusedKey, -1, null, reusedValue);
     }
 
@@ -69,6 +70,8 @@ public class KeyValueSerializer extends ObjectSerializer<KeyValue> {
             InternalRow key, long sequenceNumber, RowKind valueKind, InternalRow value) {
         reusedMeta.setField(0, sequenceNumber);
         reusedMeta.setField(1, valueKind.toByteValue());
+        reusedMeta.setField(2, valueKind == RowKind.INSERT ? Timestamp.now() : null);
+        reusedMeta.setField(3, Timestamp.now());
         return reusedRow.replace(reusedKeyWithMeta.replace(key, reusedMeta), value);
     }
 
@@ -78,7 +81,9 @@ public class KeyValueSerializer extends ObjectSerializer<KeyValue> {
         reusedValue.replace(row);
         long sequenceNumber = row.getLong(keyArity);
         RowKind valueKind = RowKind.fromByteValue(row.getByte(keyArity + 1));
-        reusedKv.replace(reusedKey, sequenceNumber, valueKind, reusedValue);
+        Timestamp createTime = row.getTimestamp(keyArity + 2, 6);
+        Timestamp updateTime = row.getTimestamp(keyArity + 3, 6);
+        reusedKv.replace(reusedKey, sequenceNumber, valueKind, createTime, updateTime, reusedValue);
         return reusedKv;
     }
 

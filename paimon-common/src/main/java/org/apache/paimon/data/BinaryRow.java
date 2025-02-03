@@ -120,6 +120,22 @@ public final class BinaryRow extends BinarySection implements InternalRow, DataS
         segments[0].put(offset, kind.toByteValue());
     }
 
+    @Override
+    public Timestamp getCreateTime() {
+        return null;
+    }
+
+    @Override
+    public void setCreateTime(Timestamp createTime) {}
+
+    @Override
+    public Timestamp getUpdateTime() {
+        return null;
+    }
+
+    @Override
+    public void setUpdateTime(Timestamp updateTime) {}
+
     public void setTotalSize(int sizeInBytes) {
         this.sizeInBytes = sizeInBytes;
     }
