@@ -149,6 +149,7 @@ public class LocalMergeOperator extends AbstractStreamOperator<InternalRow>
                     new SortBufferWriteBuffer(
                             keyType,
                             valueType,
+                            options.auditTimeEnabled(),
                             udsComparator,
                             pool,
                             false,

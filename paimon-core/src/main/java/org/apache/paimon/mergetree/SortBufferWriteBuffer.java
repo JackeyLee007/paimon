@@ -65,6 +65,7 @@ public class SortBufferWriteBuffer implements WriteBuffer {
     public SortBufferWriteBuffer(
             RowType keyType,
             RowType valueType,
+            boolean auditTimeEnabled,
             @Nullable FieldsComparator userDefinedSeqComparator,
             MemorySegmentPool memoryPool,
             boolean spillable,
@@ -108,7 +109,7 @@ public class SortBufferWriteBuffer implements WriteBuffer {
                     "Write buffer requires a minimum of 3 page memory, please increase write buffer memory size.");
         }
         InternalRowSerializer serializer =
-                InternalSerializers.create(KeyValue.schema(keyType, valueType));
+                InternalSerializers.create(KeyValue.schema(keyType, valueType, auditTimeEnabled));
         BinaryInMemorySortBuffer inMemorySortBuffer =
                 BinaryInMemorySortBuffer.createBuffer(
                         normalizedKeyComputer, serializer, keyComparator, memoryPool);

@@ -688,6 +688,16 @@ public class CoreOptions implements Serializable {
                             "The field that generates the row kind for primary key table,"
                                     + " the row kind determines which data is '+I', '-U', '+U' or '-D'.");
 
+    @Immutable
+    public static final ConfigOption<Boolean> AUDIT_TIME_ENABLED =
+            key("audit-time.enabled")
+                    .booleanType()
+                    .defaultValue(false)
+                    .withDescription(
+                            "Whether to enable audit time for primary key table. "
+                                    + "If enabled, two audit time fields, create_time and update_time, "
+                                    + "will be added to the audit_log system table.");
+
     public static final ConfigOption<StartupMode> SCAN_MODE =
             key("scan.mode")
                     .enumType(StartupMode.class)
@@ -2457,6 +2467,10 @@ public class CoreOptions implements Serializable {
 
     public boolean asyncFileWrite() {
         return options.get(ASYNC_FILE_WRITE);
+    }
+
+    public boolean auditTimeEnabled() {
+        return options.get(AUDIT_TIME_ENABLED);
     }
 
     public boolean statsDenseStore() {

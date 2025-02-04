@@ -33,8 +33,8 @@ public class KeyValueThinSerializer extends ObjectSerializer<KeyValue> {
     private final GenericRow reusedMeta;
     private final JoinedRow reusedKeyWithMeta;
 
-    public KeyValueThinSerializer(RowType keyType, RowType valueType) {
-        super(KeyValue.schema(keyType, valueType));
+    public KeyValueThinSerializer(RowType keyType, RowType valueType, boolean auditTime) {
+        super(KeyValue.schema(keyType, valueType, auditTime));
 
         this.reusedMeta = new GenericRow(2);
         this.reusedKeyWithMeta = new JoinedRow();

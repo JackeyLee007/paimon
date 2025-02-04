@@ -60,6 +60,7 @@ public class KeyValueFileReaderFactory implements FileReaderFactory<KeyValue> {
     private final FileIO fileIO;
     private final SchemaManager schemaManager;
     private final TableSchema schema;
+    private final boolean auditTime;
     private final RowType keyType;
     private final RowType valueType;
 
@@ -75,6 +76,7 @@ public class KeyValueFileReaderFactory implements FileReaderFactory<KeyValue> {
             FileIO fileIO,
             SchemaManager schemaManager,
             TableSchema schema,
+            boolean auditTime,
             RowType keyType,
             RowType valueType,
             FormatReaderMapping.Builder formatReaderMappingBuilder,
@@ -85,6 +87,7 @@ public class KeyValueFileReaderFactory implements FileReaderFactory<KeyValue> {
         this.fileIO = fileIO;
         this.schemaManager = schemaManager;
         this.schema = schema;
+        this.auditTime = auditTime;
         this.keyType = keyType;
         this.valueType = valueType;
         this.formatReaderMappingBuilder = formatReaderMappingBuilder;
@@ -142,7 +145,8 @@ public class KeyValueFileReaderFactory implements FileReaderFactory<KeyValue> {
                     new ApplyDeletionVectorReader(fileRecordReader, deletionVector.get());
         }
 
-        return new KeyValueDataFileRecordReader(fileRecordReader, keyType, valueType, file.level());
+        return new KeyValueDataFileRecordReader(
+                fileRecordReader, keyType, valueType, file.level(), this.auditTime);
     }
 
     public static Builder builder(
@@ -254,16 +258,20 @@ public class KeyValueFileReaderFactory implements FileReaderFactory<KeyValue> {
                     schema -> {
                         List<DataField> dataKeyFields = extractor.keyFields(schema);
                         List<DataField> dataValueFields = extractor.valueFields(schema);
-                        return KeyValue.createKeyValueFields(dataKeyFields, dataValueFields);
+                        return KeyValue.createKeyValueFields(
+                                dataKeyFields, dataValueFields, this.options.auditTimeEnabled());
                     };
             List<DataField> readTableFields =
                     KeyValue.createKeyValueFields(
-                            finalReadKeyType.getFields(), readValueType.getFields());
+                            finalReadKeyType.getFields(),
+                            readValueType.getFields(),
+                            this.options.auditTimeEnabled());
 
             return new KeyValueFileReaderFactory(
                     fileIO,
                     schemaManager,
                     schema,
+                    options.auditTimeEnabled(),
                     finalReadKeyType,
                     readValueType,
                     new FormatReaderMapping.Builder(

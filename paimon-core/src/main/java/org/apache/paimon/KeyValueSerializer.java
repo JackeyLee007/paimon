@@ -45,19 +45,25 @@ public class KeyValueSerializer extends ObjectSerializer<KeyValue> {
     private final OffsetRow reusedKey;
     private final OffsetRow reusedValue;
     private final KeyValue reusedKv;
+    private final boolean auditTime;
 
     public KeyValueSerializer(RowType keyType, RowType valueType) {
-        super(KeyValue.schema(keyType, valueType));
+        this(keyType, valueType, false);
+    }
+
+    public KeyValueSerializer(RowType keyType, RowType valueType, boolean auditTime) {
+        super(KeyValue.schema(keyType, valueType, auditTime));
+        this.auditTime = auditTime;
 
         this.keyArity = keyType.getFieldCount();
         int valueArity = valueType.getFieldCount();
 
-        this.reusedMeta = new GenericRow(4); // sequenceNumber, valueKind, createTime, updateTime
+        this.reusedMeta = new GenericRow(this.auditTime ? 4 : 2);
         this.reusedKeyWithMeta = new JoinedRow();
         this.reusedRow = new JoinedRow();
 
         this.reusedKey = new OffsetRow(keyArity, 0);
-        this.reusedValue = new OffsetRow(valueArity, keyArity + 4);
+        this.reusedValue = new OffsetRow(valueArity, keyArity + (this.auditTime ? 4 : 2));
         this.reusedKv = new KeyValue().replace(reusedKey, -1, null, reusedValue);
     }
 
@@ -70,8 +76,10 @@ public class KeyValueSerializer extends ObjectSerializer<KeyValue> {
             InternalRow key, long sequenceNumber, RowKind valueKind, InternalRow value) {
         reusedMeta.setField(0, sequenceNumber);
         reusedMeta.setField(1, valueKind.toByteValue());
-        reusedMeta.setField(2, valueKind == RowKind.INSERT ? Timestamp.now() : null);
-        reusedMeta.setField(3, Timestamp.now());
+        if (auditTime) {
+            reusedMeta.setField(2, valueKind == RowKind.INSERT ? Timestamp.now() : null);
+            reusedMeta.setField(3, Timestamp.now());
+        }
         return reusedRow.replace(reusedKeyWithMeta.replace(key, reusedMeta), value);
     }
 
@@ -81,8 +89,8 @@ public class KeyValueSerializer extends ObjectSerializer<KeyValue> {
         reusedValue.replace(row);
         long sequenceNumber = row.getLong(keyArity);
         RowKind valueKind = RowKind.fromByteValue(row.getByte(keyArity + 1));
-        Timestamp createTime = row.getTimestamp(keyArity + 2, 6);
-        Timestamp updateTime = row.getTimestamp(keyArity + 3, 6);
+        Timestamp createTime = auditTime ? row.getTimestamp(keyArity + 2, 6) : null;
+        Timestamp updateTime = auditTime ? row.getTimestamp(keyArity + 3, 6) : null;
         reusedKv.replace(reusedKey, sequenceNumber, valueKind, createTime, updateTime, reusedValue);
         return reusedKv;
     }

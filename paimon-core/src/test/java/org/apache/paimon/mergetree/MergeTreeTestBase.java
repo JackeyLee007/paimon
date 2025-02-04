@@ -517,7 +517,8 @@ public abstract class MergeTreeTestBase {
                         options.commitForceCompact(),
                         changelogProducer,
                         null,
-                        null);
+                        null,
+                        options.auditTimeEnabled());
         writer.setMemoryPool(
                 new HeapMemorySegmentPool(options.writeBufferSize(), options.pageSize()));
         return writer;

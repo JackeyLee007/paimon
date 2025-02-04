@@ -121,7 +121,8 @@ public class KeyValueFileWriterFactory {
                         fileIO,
                         formatContext.writerFactory(level),
                         path,
-                        new KeyValueThinSerializer(keyType, valueType)::toRow,
+                        new KeyValueThinSerializer(keyType, valueType, options.auditTimeEnabled())
+                                ::toRow,
                         keyType,
                         valueType,
                         formatContext.extractor(level),
@@ -136,7 +137,8 @@ public class KeyValueFileWriterFactory {
                         fileIO,
                         formatContext.writerFactory(level),
                         path,
-                        new KeyValueSerializer(keyType, valueType)::toRow,
+                        new KeyValueSerializer(keyType, valueType, options.auditTimeEnabled())
+                                ::toRow,
                         keyType,
                         valueType,
                         formatContext.extractor(level),
@@ -255,7 +257,10 @@ public class KeyValueFileWriterFactory {
             this.thinModeEnabled =
                     options.dataFileThinMode() && supportsThinMode(keyType, valueType);
             RowType writeRowType =
-                    KeyValue.schema(thinModeEnabled ? RowType.of() : keyType, valueType);
+                    KeyValue.schema(
+                            thinModeEnabled ? RowType.of() : keyType,
+                            valueType,
+                            options.auditTimeEnabled());
             Map<Integer, String> fileFormatPerLevel = options.fileFormatPerLevel();
             this.level2Format =
                     level ->

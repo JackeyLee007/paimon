@@ -65,6 +65,7 @@ public class MergeSorter {
     private final SortEngine sortEngine;
     private final int spillThreshold;
     private final CompressOptions compression;
+    private final boolean auditTimeEnabled;
 
     private final MemorySegmentPool memoryPool;
 
@@ -78,6 +79,7 @@ public class MergeSorter {
         this.sortEngine = options.sortEngine();
         this.spillThreshold = options.sortSpillThreshold();
         this.compression = options.spillCompressOptions();
+        this.auditTimeEnabled = options.auditTimeEnabled();
         this.keyType = keyType;
         this.valueType = valueType;
         this.memoryPool =
@@ -162,7 +164,7 @@ public class MergeSorter {
 
         FileIOChannel.ID channel = ioManager.createChannel();
         KeyValueWithLevelNoReusingSerializer serializer =
-                new KeyValueWithLevelNoReusingSerializer(keyType, valueType);
+                new KeyValueWithLevelNoReusingSerializer(keyType, valueType, auditTimeEnabled);
         BlockCompressionFactory compressFactory = BlockCompressionFactory.create(compression);
         int compressBlock = (int) MemorySize.parse("64 kb").getBytes();
 

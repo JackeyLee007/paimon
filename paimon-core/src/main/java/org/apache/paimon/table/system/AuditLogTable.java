@@ -86,6 +86,10 @@ public class AuditLogTable implements DataTable, ReadonlyTable {
 
     public static final String AUDIT_LOG = "audit_log";
 
+    private static final int ROWKIND_POS = -1;
+    private static final int CREATE_TIME_POS = -2;
+    private static final int UPDATE_TIME_POS = -3;
+
     public static final PredicateReplaceVisitor PREDICATE_CONVERTER =
             p -> {
                 if (p.index() == 0) {
@@ -140,8 +144,10 @@ public class AuditLogTable implements DataTable, ReadonlyTable {
     public RowType rowType() {
         List<DataField> fields = new ArrayList<>();
         fields.add(SpecialFields.ROW_KIND);
-        fields.add(SpecialFields.CREATE_TIME);
-        fields.add(SpecialFields.UPDATE_TIME);
+        if (this.wrapped.coreOptions().auditTimeEnabled()) {
+            fields.add(SpecialFields.CREATE_TIME);
+            fields.add(SpecialFields.UPDATE_TIME);
+        }
         fields.addAll(wrapped.rowType().getFields());
         return new RowType(fields);
     }
@@ -573,13 +579,16 @@ public class AuditLogTable implements DataTable, ReadonlyTable {
         /** Default projection, just add row kind to the first. */
         private int[] defaultProjection() {
             int dataFieldCount = wrapped.rowType().getFieldCount();
-            int[] projection = new int[dataFieldCount + 3];
-            projection[0] = -1; // rowkind
-            projection[1] = -2; // _create_time
-            projection[2] = -3; // _update_time
+            int auditOffset = coreOptions().auditTimeEnabled() ? 3 : 1;
+            int[] projection = new int[dataFieldCount + auditOffset];
+            projection[0] = ROWKIND_POS; // rowkind
+            if (coreOptions().auditTimeEnabled()) {
+                projection[1] = CREATE_TIME_POS; // _create_time
+                projection[2] = UPDATE_TIME_POS; // _update_time
+            }
 
             for (int i = 0; i < dataFieldCount; i++) {
-                projection[i + 3] = i;
+                projection[i + auditOffset] = i;
             }
             return projection;
         }
@@ -665,7 +674,7 @@ public class AuditLogTable implements DataTable, ReadonlyTable {
 
         @Override
         public BinaryString getString(int pos) {
-            if (indexMapping[pos] < 0) {
+            if (indexMapping[pos] == ROWKIND_POS) {
                 return BinaryString.fromString(row.getRowKind().shortString());
             }
             return super.getString(pos);
@@ -673,10 +682,10 @@ public class AuditLogTable implements DataTable, ReadonlyTable {
 
         @Override
         public Timestamp getTimestamp(int pos, int precision) {
-            if (indexMapping[pos] == -2) {
+            if (indexMapping[pos] == CREATE_TIME_POS) {
                 return row.getCreateTime();
             }
-            if (indexMapping[pos] == -3) {
+            if (indexMapping[pos] == UPDATE_TIME_POS) {
                 return row.getUpdateTime();
             }
             return row.getTimestamp(indexMapping[pos], precision);

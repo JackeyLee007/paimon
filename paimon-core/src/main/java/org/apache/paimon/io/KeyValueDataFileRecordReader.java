@@ -39,8 +39,17 @@ public class KeyValueDataFileRecordReader implements FileRecordReader<KeyValue> 
 
     public KeyValueDataFileRecordReader(
             FileRecordReader<InternalRow> reader, RowType keyType, RowType valueType, int level) {
+        this(reader, keyType, valueType, level, false);
+    }
+
+    public KeyValueDataFileRecordReader(
+            FileRecordReader<InternalRow> reader,
+            RowType keyType,
+            RowType valueType,
+            int level,
+            boolean auditTime) {
         this.reader = reader;
-        this.serializer = new KeyValueSerializer(keyType, valueType);
+        this.serializer = new KeyValueSerializer(keyType, valueType, auditTime);
         this.level = level;
     }
 

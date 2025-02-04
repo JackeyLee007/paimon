@@ -85,6 +85,7 @@ public class MergeTreeWriter implements RecordWriter<KeyValue>, MemoryOwner {
     private long newSequenceNumber;
     private WriteBuffer writeBuffer;
     private boolean isInsertOnly;
+    private boolean auditTimeEnabled;
 
     public MergeTreeWriter(
             boolean writeBufferSpillable,
@@ -100,7 +101,8 @@ public class MergeTreeWriter implements RecordWriter<KeyValue>, MemoryOwner {
             boolean commitForceCompact,
             ChangelogProducer changelogProducer,
             @Nullable CommitIncrement increment,
-            @Nullable FieldsComparator userDefinedSeqComparator) {
+            @Nullable FieldsComparator userDefinedSeqComparator,
+            boolean auditTimeEnabled) {
         this.writeBufferSpillable = writeBufferSpillable;
         this.maxDiskSize = maxDiskSize;
         this.sortMaxFan = sortMaxFan;
@@ -152,6 +154,7 @@ public class MergeTreeWriter implements RecordWriter<KeyValue>, MemoryOwner {
                 new SortBufferWriteBuffer(
                         keyType,
                         valueType,
+                        auditTimeEnabled,
                         userDefinedSeqComparator,
                         memoryPool,
                         writeBufferSpillable,

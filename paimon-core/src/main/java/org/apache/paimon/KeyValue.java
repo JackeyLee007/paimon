@@ -63,12 +63,7 @@ public class KeyValue {
 
     public KeyValue replace(
             InternalRow key, long sequenceNumber, RowKind valueKind, InternalRow value) {
-        this.key = key;
-        this.sequenceNumber = sequenceNumber;
-        this.valueKind = valueKind;
-        this.value = value;
-        this.level = UNKNOWN_LEVEL;
-        return this;
+        return replace(key, sequenceNumber, valueKind, null, null, value);
     }
 
     public KeyValue replace(
@@ -140,12 +135,15 @@ public class KeyValue {
         return this;
     }
 
-    public static RowType schema(RowType keyType, RowType valueType) {
-        return new RowType(createKeyValueFields(keyType.getFields(), valueType.getFields()));
+    public static RowType schema(RowType keyType, RowType valueType, boolean auditTimeEnabled) {
+        return new RowType(
+                createKeyValueFields(keyType.getFields(), valueType.getFields(), auditTimeEnabled));
     }
 
-    public static RowType schemaWithLevel(RowType keyType, RowType valueType) {
-        List<DataField> fields = new ArrayList<>(schema(keyType, valueType).getFields());
+    public static RowType schemaWithLevel(
+            RowType keyType, RowType valueType, boolean auditTimeEnabled) {
+        List<DataField> fields =
+                new ArrayList<>(schema(keyType, valueType, auditTimeEnabled).getFields());
         fields.add(LEVEL);
         return new RowType(fields);
     }
@@ -158,13 +156,15 @@ public class KeyValue {
      * @return the table fields
      */
     public static List<DataField> createKeyValueFields(
-            List<DataField> keyFields, List<DataField> valueFields) {
+            List<DataField> keyFields, List<DataField> valueFields, boolean auditTimeEnabled) {
         List<DataField> fields = new ArrayList<>(keyFields.size() + valueFields.size() + 2);
         fields.addAll(keyFields);
         fields.add(SEQUENCE_NUMBER);
         fields.add(VALUE_KIND);
-        fields.add(CREATE_TIME);
-        fields.add(UPDATE_TIME);
+        if (auditTimeEnabled) {
+            fields.add(CREATE_TIME);
+            fields.add(UPDATE_TIME);
+        }
         fields.addAll(valueFields);
         return fields;
     }

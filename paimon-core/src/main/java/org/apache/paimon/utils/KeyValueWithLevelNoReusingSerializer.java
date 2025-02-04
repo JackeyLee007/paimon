@@ -34,8 +34,9 @@ public class KeyValueWithLevelNoReusingSerializer extends ObjectSerializer<KeyVa
     private final int keyArity;
     private final int valueArity;
 
-    public KeyValueWithLevelNoReusingSerializer(RowType keyType, RowType valueType) {
-        super(KeyValue.schemaWithLevel(keyType, valueType));
+    public KeyValueWithLevelNoReusingSerializer(
+            RowType keyType, RowType valueType, boolean auditTimeEnabled) {
+        super(KeyValue.schemaWithLevel(keyType, valueType, auditTimeEnabled));
 
         this.keyArity = keyType.getFieldCount();
         this.valueArity = valueType.getFieldCount();
