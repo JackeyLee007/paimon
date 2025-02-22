@@ -124,13 +124,7 @@ public abstract class AbstractJsonRecordParser extends AbstractRecordParser {
     protected void processRecord(
             JsonNode jsonNode, RowKind rowKind, List<RichCdcMultiplexRecord> records) {
         RowType.Builder rowTypeBuilder = RowType.builder();
-<<<<<<< HEAD
-        Map<String, String> rowData = this.extractRowData(jsonNode, rowTypeBuilder);
-        evalComputedColumns(rowKind, rowData, rowTypeBuilder);
-=======
         Map<String, String> rowData = this.extractRowData(rowKind, jsonNode, rowTypeBuilder);
-
->>>>>>> 1e76b3018 ([cdc] Support audit time during cdc by computed columns)
         records.add(createRecord(rowKind, rowData, rowTypeBuilder.build().getFields()));
     }
 

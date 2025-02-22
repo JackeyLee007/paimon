@@ -158,10 +158,7 @@ public class DebeziumAvroRecordParser extends AbstractRecordParser {
             rowTypeBuilder.field(fieldName, avroToPaimonDataType(schema));
         }
 
-<<<<<<< HEAD
-=======
         evalComputedColumns(rowKind, resultMap, rowTypeBuilder);
->>>>>>> 1e76b3018 ([cdc] Support audit time during cdc by computed columns)
         return resultMap;
     }
 
