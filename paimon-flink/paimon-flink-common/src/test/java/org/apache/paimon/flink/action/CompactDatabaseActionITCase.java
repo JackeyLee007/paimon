@@ -24,11 +24,10 @@ import org.apache.paimon.catalog.Identifier;
 import org.apache.paimon.data.BinaryString;
 import org.apache.paimon.data.GenericRow;
 import org.apache.paimon.flink.FlinkConnectorOptions;
+import org.apache.paimon.operation.*;
 import org.apache.paimon.schema.Schema;
 import org.apache.paimon.table.FileStoreTable;
-import org.apache.paimon.table.sink.StreamTableCommit;
-import org.apache.paimon.table.sink.StreamTableWrite;
-import org.apache.paimon.table.sink.StreamWriteBuilder;
+import org.apache.paimon.table.sink.*;
 import org.apache.paimon.table.source.DataSplit;
 import org.apache.paimon.table.source.StreamTableScan;
 import org.apache.paimon.table.source.TableScan;
@@ -50,12 +49,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import javax.annotation.Nullable;
 
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Stream;
 
@@ -1058,6 +1052,89 @@ public class CompactDatabaseActionITCase extends CompactActionITCaseBase {
 
         waitUtil(
                 () -> snapshotManager.earliestSnapshotId() == 9L,
+                Duration.ofSeconds(60),
+                Duration.ofMillis(200),
+                "Failed to wait snapshot expiration success");
+    }
+
+    @Test
+    public void testForceSnapshot() throws Exception {
+        // create table and commit data
+        Map<String, String> options = new HashMap<>();
+        options.put(CoreOptions.WRITE_ONLY.key(), "true");
+        options.put(CoreOptions.BUCKET.key(), "1");
+        options.put(CoreOptions.SNAPSHOT_NUM_RETAINED_MIN.key(), "1000");
+        FileStoreTable table =
+                createTable(
+                        "test_db",
+                        "t",
+                        Arrays.asList("dt", "hh"),
+                        Arrays.asList("dt", "hh", "k"),
+                        options);
+
+        StreamWriteBuilder streamWriteBuilder =
+                table.newStreamWriteBuilder().withCommitUser(commitUser);
+        write = streamWriteBuilder.newWrite();
+        commit = streamWriteBuilder.newCommit();
+        ((TableCommitImpl)commit).ignoreEmptyCommit(true);
+        writeData(rowData(1, 1, 15, BinaryString.fromString("20221208")));
+
+        SnapshotManager snapshotManager = table.snapshotManager();
+        assertThat(snapshotManager.latestSnapshotId() == 1L);
+
+        // if CoreOptions.CONTINUOUS_DISCOVERY_INTERVAL.key() use default value, the cost
+        // time in combined mode will be over 1 min
+        CompactDatabaseAction action =
+                createAction(
+                        CompactDatabaseAction.class,
+                        "compact_database",
+                        "--warehouse",
+                        warehouse,
+                        "--force_snapshot",
+                        "true",
+                        "--mode",
+                        "combined",
+                        "--table_conf",
+                        CoreOptions.CONTINUOUS_DISCOVERY_INTERVAL.key() + "=1s",
+                        // test dynamic options will be copied in commit
+                        "--table_conf",
+                        CoreOptions.SNAPSHOT_NUM_RETAINED_MIN.key() + "=3",
+                        "--table_conf",
+                        CoreOptions.SNAPSHOT_NUM_RETAINED_MAX.key() + "=3");
+
+        StreamExecutionEnvironment env =
+                streamExecutionEnvironmentBuilder().streamingMode().build();
+        action.withStreamExecutionEnvironment(env).build();
+        JobClient jobClient = env.executeAsync();
+
+        // Compacted by action
+        waitUtil(
+                () -> {
+                    Snapshot snapshot = snapshotManager.latestSnapshot();
+                    return snapshot != null
+                            && snapshot.id() == 2L
+                            && snapshot.commitKind() == Snapshot.CommitKind.COMPACT;
+                },
+                Duration.ofSeconds(60),
+                Duration.ofMillis(500));
+
+        // Snapshot since force_snapshot=true, even though no new data commited.
+        waitUtil(
+                () -> {
+                    Snapshot snapshot = snapshotManager.latestSnapshot();
+                    return snapshot != null
+                            && snapshot.id() == 4L
+                            && snapshot.commitKind() == Snapshot.CommitKind.APPEND;
+                },
+                Duration.ofSeconds(60),
+                Duration.ofMillis(500));
+        jobClient.cancel();
+
+        assertThat(snapshotManager.latestSnapshot().commitKind())
+                .isEqualTo(Snapshot.CommitKind.APPEND);
+
+        waitUtil(
+                () -> snapshotManager.earliestSnapshotId() == 1L,
                 Duration.ofSeconds(60),
                 Duration.ofMillis(200),
                 "Failed to wait snapshot expiration success");

@@ -74,6 +74,8 @@ public class CompactDatabaseAction extends ActionBase {
 
     private Boolean fullCompaction;
 
+    private Boolean forceSnapshot;
+
     private boolean isStreaming;
 
     public CompactDatabaseAction(Map<String, String> catalogConfig) {
@@ -111,6 +113,11 @@ public class CompactDatabaseAction extends ActionBase {
 
     public CompactDatabaseAction withPartitionIdleTime(@Nullable Duration partitionIdleTime) {
         this.partitionIdleTime = partitionIdleTime;
+        return this;
+    }
+
+    public CompactDatabaseAction withForceSnapshot(boolean forceSnapshot) {
+        this.forceSnapshot = forceSnapshot;
         return this;
     }
 
@@ -241,7 +248,7 @@ public class CompactDatabaseAction extends ActionBase {
                                 .buildForUnawareBucketsTableSource(),
                         parallelism);
 
-        new CombinedTableCompactorSink(catalogLoader(), tableOptions, fullCompaction)
+        new CombinedTableCompactorSink(catalogLoader(), tableOptions, forceSnapshot, fullCompaction)
                 .sinkFrom(awareBucketTableSource, unawareBucketTableSource);
     }
 

@@ -60,6 +60,7 @@ public interface ActionFactory extends Factory {
     String COMPACT_STRATEGY = "compact_strategy";
     String MINOR = "minor";
     String FULL = "full";
+    String FORCE_SNAPSHOT = "force_snapshot";
 
     Optional<Action> create(MultipleParameterToolAdapter params);
 

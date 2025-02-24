@@ -47,6 +47,7 @@ public class CompactDatabaseActionFactory implements ActionFactory {
         action.includingDatabases(params.get(INCLUDING_DATABASES))
                 .includingTables(params.get(INCLUDING_TABLES))
                 .excludingTables(params.get(EXCLUDING_TABLES))
+                .withForceSnapshot(Boolean.valueOf(params.get(FORCE_SNAPSHOT)))
                 .withDatabaseCompactMode(params.get(MODE))
                 .withTableOptions(optionalConfigMap(params, TABLE_CONF));
         String partitionIdleTime = params.get(PARTITION_IDLE_TIME);
@@ -93,6 +94,8 @@ public class CompactDatabaseActionFactory implements ActionFactory {
                         + "The usage is same as --including_tables.");
         System.out.println(
                 "--excluding_tables has higher priority than --including_tables if you specified both.");
+        System.out.println(
+                "--force_snapshot ensure the table's snapshot is created even there is no new data. Default is false.");
         System.out.println(
                 "--mode is used to specify compaction mode. Possible values: divided, combined.");
         System.out.println(

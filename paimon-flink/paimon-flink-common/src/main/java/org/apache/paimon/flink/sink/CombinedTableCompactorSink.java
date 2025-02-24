@@ -58,14 +58,19 @@ public class CombinedTableCompactorSink implements Serializable {
 
     private final CatalogLoader catalogLoader;
     private final boolean ignorePreviousFiles;
+    private final boolean forceSnapshot;
     private final boolean fullCompaction;
 
     private final Options options;
 
     public CombinedTableCompactorSink(
-            CatalogLoader catalogLoader, Options options, boolean fullCompaction) {
+            CatalogLoader catalogLoader,
+            Options options,
+            boolean forceSnapshot,
+            boolean fullCompaction) {
         this.catalogLoader = catalogLoader;
         this.ignorePreviousFiles = false;
+        this.forceSnapshot = forceSnapshot;
         this.fullCompaction = fullCompaction;
         this.options = options;
     }
@@ -162,10 +167,11 @@ public class CombinedTableCompactorSink implements Serializable {
                                 streamingCheckpointEnabled,
                                 false,
                                 commitUser,
-                                createCommitterFactory(isStreaming),
+                                createCommitterFactory(isStreaming, forceSnapshot),
                                 createCommittableStateManager(),
                                 options.get(END_INPUT_WATERMARK)));
         forwardParallelism(committed, written);
+
         if (!options.get(SINK_COMMITTER_OPERATOR_CHAINING)) {
             committed = committed.startNewChain();
         }
@@ -190,7 +196,7 @@ public class CombinedTableCompactorSink implements Serializable {
     }
 
     protected Committer.Factory<MultiTableCommittable, WrappedManifestCommittable>
-            createCommitterFactory(boolean isStreaming) {
+            createCommitterFactory(boolean isStreaming, boolean forceSnapshot) {
         Map<String, String> dynamicOptions = options.toMap();
         dynamicOptions.put(CoreOptions.WRITE_ONLY.key(), "false");
         if (isStreaming) {
@@ -198,7 +204,10 @@ public class CombinedTableCompactorSink implements Serializable {
             dynamicOptions.put(CoreOptions.SORT_SPILL_THRESHOLD.key(), "10");
             dynamicOptions.put(CoreOptions.LOOKUP_WAIT.key(), "false");
         }
-        return context -> new StoreMultiCommitter(catalogLoader, context, true, dynamicOptions);
+
+        // forceSnapshot means !ignoreEmptyCommit
+        return context ->
+                new StoreMultiCommitter(catalogLoader, context, !forceSnapshot, dynamicOptions);
     }
 
     protected CommittableStateManager<WrappedManifestCommittable> createCommittableStateManager() {

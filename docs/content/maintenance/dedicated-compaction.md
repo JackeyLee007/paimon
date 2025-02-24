@@ -194,6 +194,7 @@ CALL sys.compact_database(
     --including_databases <database-name|name-regular-expr> \ 
     [--including_tables <paimon-table-name|name-regular-expr>] \
     [--excluding_tables <paimon-table-name|name-regular-expr>] \
+    [--force_snapshot <false|true>] \
     [--mode <compact-mode>] \
     [--compact_strategy <minor / full>] \
     [--catalog_conf <paimon-catalog-conf> [--catalog_conf <paimon-catalog-conf> ...]] \
@@ -203,6 +204,7 @@ CALL sys.compact_database(
 * `--including_databases` is used to specify which database is to be compacted. In compact mode, you need to specify a database name, in compact_database mode, you could specify multiple database, regular expression is supported.
 * `--including_tables` is used to specify which source tables are to be compacted, you must use '|' to separate multiple tables, the format is `databaseName.tableName`, regular expression is supported. For example, specifying "--including_tables db1.t1|db2.+" means to compact table 'db1.t1' and all tables in the db2 database.
 * `--excluding_tables`  is used to specify which source tables are not to be compacted. The usage is same as "--including_tables". "--excluding_tables" has higher priority than "--including_tables" if you specified both.
+* `--force_snapshot` is used to specify whether to force snapshot for compacted tables. If set to true, a snapshot will be created even though there is no data change.
 * `--mode` is used to specify compaction mode. Possible values:
   * "divided" (the default mode if you haven't specified one): start a sink for each table, the compaction of the new table requires restarting the job.
   * "combined": start a single combined sink for all tables, the new table will be automatically compacted.
