@@ -241,7 +241,8 @@ public class DebeziumBsonRecordParserTest {
 
             JsonNode bsonTextNode =
                     new TextNode(JsonSerdeUtil.writeValueAsString(bsonRecord.getValue()));
-            Map<String, String> resultMap = parser.extractRowData(bsonTextNode, RowType.builder());
+            Map<String, String> resultMap =
+                    parser.extractRowData(RowKind.INSERT, bsonTextNode, RowType.builder());
 
             ObjectNode expectNode = (ObjectNode) jsonRecord.getValue();
 
