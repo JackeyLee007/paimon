@@ -19,12 +19,10 @@
 package org.apache.paimon.flink.action.cdc;
 
 import org.apache.paimon.data.Timestamp;
-import org.apache.paimon.table.SpecialFields;
 import org.apache.paimon.types.DataType;
 import org.apache.paimon.types.DataTypeFamily;
 import org.apache.paimon.types.DataTypeJsonParser;
 import org.apache.paimon.types.DataTypes;
-import org.apache.paimon.types.RowKind;
 import org.apache.paimon.utils.DateTimeUtils;
 import org.apache.paimon.utils.SerializableSupplier;
 import org.apache.paimon.utils.StringUtils;
@@ -144,14 +142,7 @@ public interface Expression extends Serializable {
                             referencedField.literals());
                 }),
         CAST((typeMapping, caseSensitive, args) -> cast(args)),
-        CREATE_TIME(
-                (typeMapping, caseSensitive, args) -> {
-                    return new AuditTimeExpression(true);
-                }),
-        UPDATE_TIME(
-                (typeMapping, caseSensitive, args) -> {
-                    return new AuditTimeExpression(false);
-                });
+        NOW((typeMapping, caseSensitive, args) -> new NowExpression());
 
         public final ExpressionCreator creator;
 
@@ -620,19 +611,10 @@ public interface Expression extends Serializable {
     }
 
     /** Get current timestamp. */
-    final class AuditTimeExpression implements Expression {
-
-        private final boolean insertOnly;
-        private final String fieldReference;
-
-        public AuditTimeExpression(boolean insertOnly) {
-            this.insertOnly = insertOnly;
-            this.fieldReference = SpecialFields.VALUE_KIND.name();
-        }
-
+    final class NowExpression implements Expression {
         @Override
         public String fieldReference() {
-            return this.fieldReference;
+            return null;
         }
 
         @Override
@@ -642,13 +624,7 @@ public interface Expression extends Serializable {
 
         @Override
         public String eval(String input) {
-            RowKind rowKind = RowKind.fromShortString(input);
-            String now = java.sql.Timestamp.valueOf(LocalDateTime.now()).toString();
-            if (rowKind == RowKind.INSERT) {
-                return now;
-            }
-
-            return insertOnly ? null : now;
+            return java.sql.Timestamp.valueOf(LocalDateTime.now()).toString();
         }
     }
 }
