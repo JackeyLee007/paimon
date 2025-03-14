@@ -69,7 +69,7 @@ public class AliyunJsonRecordParserTest extends KafkaActionITCaseBase {
         String deleteRes = "kafka/aliyun/table/event/event-delete.txt";
 
         String[] computedColumnArgs = {
-            "etl_create_time=create_time()", "etl_update_time=update_time()"
+            "etl_create_time=now()", "etl_update_time=now()"
         };
 
         URL url;
