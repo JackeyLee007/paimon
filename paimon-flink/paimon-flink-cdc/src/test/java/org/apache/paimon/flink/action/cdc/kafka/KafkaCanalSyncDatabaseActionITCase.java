@@ -667,8 +667,8 @@ public class KafkaCanalSyncDatabaseActionITCase extends KafkaActionITCaseBase {
                         .withPrimaryKeys("k")
                         .withComputedColumnArgs(
                                 Arrays.asList(
-                                        "etl_create_time=create_time()",
-                                        "etl_update_time=update_time()"))
+                                        "etl_create_time=now()",
+                                        "etl_update_time=now()"))
                         .build();
         runActionWithDefaultEnv(action);
 
