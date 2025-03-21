@@ -19,17 +19,14 @@
 package org.apache.paimon.rest;
 
 import org.apache.paimon.rest.requests.AlterDatabaseRequest;
-import org.apache.paimon.rest.requests.AlterPartitionsRequest;
 import org.apache.paimon.rest.requests.AlterTableRequest;
 import org.apache.paimon.rest.requests.CreateDatabaseRequest;
-import org.apache.paimon.rest.requests.CreatePartitionsRequest;
 import org.apache.paimon.rest.requests.CreateTableRequest;
 import org.apache.paimon.rest.requests.CreateViewRequest;
-import org.apache.paimon.rest.requests.DropPartitionsRequest;
 import org.apache.paimon.rest.requests.RenameTableRequest;
+import org.apache.paimon.rest.requests.RollbackTableRequest;
 import org.apache.paimon.rest.responses.AlterDatabaseResponse;
 import org.apache.paimon.rest.responses.ConfigResponse;
-import org.apache.paimon.rest.responses.CreateDatabaseResponse;
 import org.apache.paimon.rest.responses.ErrorResponse;
 import org.apache.paimon.rest.responses.GetDatabaseResponse;
 import org.apache.paimon.rest.responses.GetTableResponse;
@@ -39,11 +36,10 @@ import org.apache.paimon.rest.responses.ListDatabasesResponse;
 import org.apache.paimon.rest.responses.ListPartitionsResponse;
 import org.apache.paimon.rest.responses.ListTablesResponse;
 import org.apache.paimon.rest.responses.ListViewsResponse;
+import org.apache.paimon.table.Instant;
 import org.apache.paimon.types.DataField;
 import org.apache.paimon.types.DataTypes;
 import org.apache.paimon.types.IntType;
-
-import org.apache.paimon.shade.jackson2.com.fasterxml.jackson.core.JsonProcessingException;
 
 import org.junit.Test;
 
@@ -52,6 +48,7 @@ import java.util.Map;
 
 import static org.apache.paimon.rest.RESTObjectMapper.OBJECT_MAPPER;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 /** Test for {@link RESTObjectMapper}. */
 public class RESTObjectMapperTest {
@@ -87,17 +84,6 @@ public class RESTObjectMapperTest {
                 OBJECT_MAPPER.readValue(requestStr, CreateDatabaseRequest.class);
         assertEquals(request.getName(), parseData.getName());
         assertEquals(request.getOptions().size(), parseData.getOptions().size());
-    }
-
-    @Test
-    public void createDatabaseResponseParseTest() throws Exception {
-        String name = MockRESTMessage.databaseName();
-        CreateDatabaseResponse response = MockRESTMessage.createDatabaseResponse(name);
-        String responseStr = OBJECT_MAPPER.writeValueAsString(response);
-        CreateDatabaseResponse parseData =
-                OBJECT_MAPPER.readValue(responseStr, CreateDatabaseResponse.class);
-        assertEquals(name, parseData.getName());
-        assertEquals(response.getOptions().size(), parseData.getOptions().size());
     }
 
     @Test
@@ -209,24 +195,6 @@ public class RESTObjectMapperTest {
     }
 
     @Test
-    public void createPartitionRequestParseTest() throws JsonProcessingException {
-        CreatePartitionsRequest request = MockRESTMessage.createPartitionRequest();
-        String requestStr = OBJECT_MAPPER.writeValueAsString(request);
-        CreatePartitionsRequest parseData =
-                OBJECT_MAPPER.readValue(requestStr, CreatePartitionsRequest.class);
-        assertEquals(parseData.getPartitionSpecs().size(), parseData.getPartitionSpecs().size());
-    }
-
-    @Test
-    public void dropPartitionRequestParseTest() throws JsonProcessingException {
-        DropPartitionsRequest request = MockRESTMessage.dropPartitionsRequest();
-        String requestStr = OBJECT_MAPPER.writeValueAsString(request);
-        DropPartitionsRequest parseData =
-                OBJECT_MAPPER.readValue(requestStr, DropPartitionsRequest.class);
-        assertEquals(parseData.getPartitionSpecs().size(), parseData.getPartitionSpecs().size());
-    }
-
-    @Test
     public void listPartitionsResponseParseTest() throws Exception {
         ListPartitionsResponse response = MockRESTMessage.listPartitionsResponse();
         String responseStr = OBJECT_MAPPER.writeValueAsString(response);
@@ -235,15 +203,6 @@ public class RESTObjectMapperTest {
         assertEquals(
                 response.getPartitions().get(0).fileCount(),
                 parseData.getPartitions().get(0).fileCount());
-    }
-
-    @Test
-    public void alterPartitionsRequestParseTest() throws Exception {
-        AlterPartitionsRequest request = MockRESTMessage.alterPartitionsRequest();
-        String requestStr = OBJECT_MAPPER.writeValueAsString(request);
-        AlterPartitionsRequest parseData =
-                OBJECT_MAPPER.readValue(requestStr, AlterPartitionsRequest.class);
-        assertEquals(request.getPartitions(), parseData.getPartitions());
     }
 
     @Test
@@ -281,5 +240,33 @@ public class RESTObjectMapperTest {
                 OBJECT_MAPPER.readValue(responseStr, GetTableTokenResponse.class);
         assertEquals(response.getToken(), parseData.getToken());
         assertEquals(response.getExpiresAtMillis(), parseData.getExpiresAtMillis());
+    }
+
+    @Test
+    public void rollbackTableRequestParseTest() throws Exception {
+        Long snapshotId = 123L;
+        String tagName = "tagName";
+        RollbackTableRequest rollbackTableRequestBySnapshot =
+                MockRESTMessage.rollbackTableRequestBySnapshot(snapshotId);
+        String rollbackTableRequestBySnapshotStr =
+                OBJECT_MAPPER.writeValueAsString(rollbackTableRequestBySnapshot);
+        Instant.SnapshotInstant rollbackTableRequestParseData =
+                (Instant.SnapshotInstant)
+                        OBJECT_MAPPER
+                                .readValue(
+                                        rollbackTableRequestBySnapshotStr,
+                                        RollbackTableRequest.class)
+                                .getInstant();
+        assertTrue(rollbackTableRequestParseData.getSnapshotId() == snapshotId);
+        RollbackTableRequest rollbackTableRequestByTag =
+                MockRESTMessage.rollbackTableRequestByTag(tagName);
+        String rollbackTableRequestByTagStr =
+                OBJECT_MAPPER.writeValueAsString(rollbackTableRequestByTag);
+        Instant.TagInstant rollbackTableRequestByTagParseData =
+                (Instant.TagInstant)
+                        OBJECT_MAPPER
+                                .readValue(rollbackTableRequestByTagStr, RollbackTableRequest.class)
+                                .getInstant();
+        assertEquals(rollbackTableRequestByTagParseData.getTagName(), tagName);
     }
 }

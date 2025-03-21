@@ -24,11 +24,12 @@ import org.apache.paimon.catalog.Catalog;
 import org.apache.paimon.catalog.CatalogTestBase;
 import org.apache.paimon.catalog.Identifier;
 import org.apache.paimon.catalog.PropertyChange;
-import org.apache.paimon.catalog.SupportsBranches;
+import org.apache.paimon.data.BinaryString;
 import org.apache.paimon.data.GenericRow;
 import org.apache.paimon.data.InternalRow;
 import org.apache.paimon.options.Options;
 import org.apache.paimon.partition.Partition;
+import org.apache.paimon.partition.PartitionStatistics;
 import org.apache.paimon.reader.RecordReader;
 import org.apache.paimon.rest.auth.DLFToken;
 import org.apache.paimon.rest.responses.ConfigResponse;
@@ -41,6 +42,8 @@ import org.apache.paimon.table.sink.BatchTableCommit;
 import org.apache.paimon.table.sink.BatchTableWrite;
 import org.apache.paimon.table.sink.BatchWriteBuilder;
 import org.apache.paimon.table.sink.CommitMessage;
+import org.apache.paimon.table.sink.StreamTableCommit;
+import org.apache.paimon.table.sink.StreamTableWrite;
 import org.apache.paimon.table.source.ReadBuilder;
 import org.apache.paimon.table.source.Split;
 import org.apache.paimon.table.source.TableRead;
@@ -262,7 +265,7 @@ public abstract class RESTCatalogTestBase extends CatalogTestBase {
                         restCatalog.commitSnapshot(
                                 identifier,
                                 createSnapshotWithMillis(1L, System.currentTimeMillis()),
-                                new ArrayList<Partition>()));
+                                new ArrayList<PartitionStatistics>()));
     }
 
     @Test
@@ -587,16 +590,27 @@ public abstract class RESTCatalogTestBase extends CatalogTestBase {
 
     @Test
     void testListPartitionsWhenMetastorePartitionedIsTrue() throws Exception {
+        if (!supportPartitions()) {
+            return;
+        }
+
         String branchName = "test_branch";
         Identifier identifier = Identifier.create("test_db", "test_table");
         Identifier branchIdentifier = new Identifier("test_db", "test_table", branchName);
         assertThrows(
                 Catalog.TableNotExistException.class, () -> restCatalog.listPartitions(identifier));
-
-        createTable(
+        restCatalog.createDatabase(identifier.getDatabaseName(), true);
+        restCatalog.createTable(
                 identifier,
-                ImmutableMap.of(METASTORE_PARTITIONED_TABLE.key(), "" + true),
-                Lists.newArrayList("col1"));
+                new Schema(
+                        Lists.newArrayList(
+                                new DataField(0, "col1", DataTypes.INT()),
+                                new DataField(1, "dt", DataTypes.STRING())),
+                        Arrays.asList("dt"),
+                        Collections.emptyList(),
+                        ImmutableMap.of(METASTORE_PARTITIONED_TABLE.key(), "" + true),
+                        ""),
+                true);
         List<Partition> result = catalog.listPartitions(identifier);
         assertEquals(0, result.size());
         List<Map<String, String>> partitionSpecs =
@@ -604,7 +618,15 @@ public abstract class RESTCatalogTestBase extends CatalogTestBase {
                         Collections.singletonMap("dt", "20250101"),
                         Collections.singletonMap("dt", "20250102"));
         restCatalog.createBranch(identifier, branchName, null);
-        restCatalog.createPartitions(branchIdentifier, Lists.newArrayList(partitionSpecs));
+
+        BatchWriteBuilder writeBuilder = catalog.getTable(branchIdentifier).newBatchWriteBuilder();
+        try (BatchTableWrite write = writeBuilder.newWrite();
+                BatchTableCommit commit = writeBuilder.newCommit()) {
+            for (Map<String, String> partitionSpec : partitionSpecs) {
+                write.write(GenericRow.of(0, BinaryString.fromString(partitionSpec.get("dt"))));
+            }
+            commit.commit(write.prepareCommit());
+        }
         assertThat(catalog.listPartitions(identifier).stream().map(Partition::spec))
                 .containsExactlyInAnyOrder(partitionSpecs.get(0), partitionSpecs.get(1));
     }
@@ -619,6 +641,9 @@ public abstract class RESTCatalogTestBase extends CatalogTestBase {
 
     @Test
     void testListPartitions() throws Exception {
+        if (!supportPartitions()) {
+            return;
+        }
         List<Map<String, String>> partitionSpecs =
                 Arrays.asList(
                         Collections.singletonMap("dt", "20250101"),
@@ -645,7 +670,15 @@ public abstract class RESTCatalogTestBase extends CatalogTestBase {
 
         restCatalog.createDatabase(databaseName, true);
         restCatalog.createTable(identifier, schema, true);
-        restCatalog.createPartitions(identifier, partitionSpecs);
+
+        BatchWriteBuilder writeBuilder = catalog.getTable(identifier).newBatchWriteBuilder();
+        try (BatchTableWrite write = writeBuilder.newWrite();
+                BatchTableCommit commit = writeBuilder.newCommit()) {
+            for (Map<String, String> partitionSpec : partitionSpecs) {
+                write.write(GenericRow.of(0, BinaryString.fromString(partitionSpec.get("dt"))));
+            }
+            commit.commit(write.prepareCommit());
+        }
 
         List<Partition> restPartitions = restCatalog.listPartitions(identifier);
         assertThat(restPartitions.stream().map(Partition::spec)).containsExactly(sortedSpecs);
@@ -653,6 +686,10 @@ public abstract class RESTCatalogTestBase extends CatalogTestBase {
 
     @Test
     public void testListPartitionsPaged() throws Exception {
+        if (!supportPartitions()) {
+            return;
+        }
+
         String databaseName = "partitions_paged_db";
         List<Map<String, String>> partitionSpecs =
                 Arrays.asList(
@@ -681,7 +718,14 @@ public abstract class RESTCatalogTestBase extends CatalogTestBase {
                         .build(),
                 true);
 
-        catalog.createPartitions(identifier, partitionSpecs);
+        BatchWriteBuilder writeBuilder = catalog.getTable(identifier).newBatchWriteBuilder();
+        try (BatchTableWrite write = writeBuilder.newWrite();
+                BatchTableCommit commit = writeBuilder.newCommit()) {
+            for (Map<String, String> partitionSpec : partitionSpecs) {
+                write.write(GenericRow.of(0, BinaryString.fromString(partitionSpec.get("dt"))));
+            }
+            commit.commit(write.prepareCommit());
+        }
         PagedList<Partition> pagedPartitions = catalog.listPartitionsPaged(identifier, null, null);
         Map[] sortedSpecs =
                 partitionSpecs.stream()
@@ -793,7 +837,7 @@ public abstract class RESTCatalogTestBase extends CatalogTestBase {
                         restCatalog.commitSnapshot(
                                 hasSnapshotTableIdentifier,
                                 createSnapshotWithMillis(1L, System.currentTimeMillis()),
-                                new ArrayList<Partition>()));
+                                new ArrayList<PartitionStatistics>()));
 
         createTable(hasSnapshotTableIdentifier, Maps.newHashMap(), Lists.newArrayList("col1"));
         long id = 10086;
@@ -808,10 +852,55 @@ public abstract class RESTCatalogTestBase extends CatalogTestBase {
         assertThat(snapshot.get().fileSizeInBytes()).isEqualTo(2);
         assertThat(snapshot.get().fileCount()).isEqualTo(3);
         assertThat(snapshot.get().lastFileCreationTime()).isEqualTo(4);
+
+        // drop table then create table
+        catalog.dropTable(hasSnapshotTableIdentifier, true);
+        createTable(hasSnapshotTableIdentifier, Maps.newHashMap(), Lists.newArrayList("col1"));
+        snapshot = catalog.loadSnapshot(hasSnapshotTableIdentifier);
+        assertThat(snapshot).isEmpty();
+        updateSnapshotOnRestServer(
+                hasSnapshotTableIdentifier, createSnapshotWithMillis(id, millis), 5, 6, 7, 8);
+        snapshot = catalog.loadSnapshot(hasSnapshotTableIdentifier);
+        assertThat(snapshot.get().recordCount()).isEqualTo(5);
+
+        // test no snapshot
+        catalog.loadSnapshot(hasSnapshotTableIdentifier);
+        createTable(hasSnapshotTableIdentifier, Maps.newHashMap(), Lists.newArrayList("col1"));
         Identifier noSnapshotTableIdentifier = Identifier.create("test_db_a_1", "unknown");
         createTable(noSnapshotTableIdentifier, Maps.newHashMap(), Lists.newArrayList("col1"));
         snapshot = catalog.loadSnapshot(noSnapshotTableIdentifier);
         assertThat(snapshot).isEmpty();
+    }
+
+    @Test
+    public void testTableRollback() throws Exception {
+        Identifier identifier = Identifier.create("test_rollback", "table_for_rollback");
+        createTable(identifier, Maps.newHashMap(), Lists.newArrayList("col1"));
+        FileStoreTable table = (FileStoreTable) catalog.getTable(identifier);
+        StreamTableWrite write = table.newWrite("commitUser");
+        StreamTableCommit commit = table.newCommit("commitUser");
+        for (int i = 0; i < 10; i++) {
+            GenericRow record = GenericRow.of(i);
+            write.write(record);
+            commit.commit(i, write.prepareCommit(false, i));
+            table.createTag("tag-" + i);
+        }
+        write.close();
+        commit.close();
+        long rollbackToSnapshotId = 4;
+        table.rollbackTo(rollbackToSnapshotId);
+        assertThat(table.snapshotManager().snapshot(rollbackToSnapshotId))
+                .isEqualTo(restCatalog.loadSnapshot(identifier).get().snapshot());
+        assertThat(table.tagManager().tagExists("tag-" + (rollbackToSnapshotId + 2))).isFalse();
+        assertThat(table.snapshotManager().snapshotExists(rollbackToSnapshotId + 1)).isFalse();
+
+        assertThrows(
+                IllegalArgumentException.class, () -> table.rollbackTo(rollbackToSnapshotId + 1));
+
+        String rollbackToTagName = "tag-" + (rollbackToSnapshotId - 1);
+        table.rollbackTo(rollbackToTagName);
+        Snapshot tagSnapshot = table.tagManager().getOrThrow(rollbackToTagName).trimToSnapshot();
+        assertThat(tagSnapshot).isEqualTo(restCatalog.loadSnapshot(identifier).get().snapshot());
     }
 
     @Test
@@ -888,22 +977,22 @@ public abstract class RESTCatalogTestBase extends CatalogTestBase {
         catalog.createTable(
                 identifier, Schema.newBuilder().column("col", DataTypes.INT()).build(), true);
         assertThrows(
-                SupportsBranches.TagNotExistException.class,
+                Catalog.TagNotExistException.class,
                 () -> restCatalog.createBranch(identifier, "my_branch", "tag"));
         restCatalog.createBranch(identifier, "my_branch", null);
         Identifier branchIdentifier = new Identifier(databaseName, "table", "my_branch");
         assertThat(restCatalog.getTable(branchIdentifier)).isNotNull();
         assertThrows(
-                SupportsBranches.BranchAlreadyExistException.class,
+                Catalog.BranchAlreadyExistException.class,
                 () -> restCatalog.createBranch(identifier, "my_branch", null));
         assertThat(restCatalog.listBranches(identifier)).containsOnly("my_branch");
         restCatalog.dropBranch(identifier, "my_branch");
 
         assertThrows(
-                SupportsBranches.BranchNotExistException.class,
+                Catalog.BranchNotExistException.class,
                 () -> restCatalog.dropBranch(identifier, "no_exist_branch"));
         assertThrows(
-                SupportsBranches.BranchNotExistException.class,
+                Catalog.BranchNotExistException.class,
                 () -> restCatalog.fastForward(identifier, "no_exist_branch"));
         assertThat(restCatalog.listBranches(identifier)).isEmpty();
     }
@@ -971,6 +1060,7 @@ public abstract class RESTCatalogTestBase extends CatalogTestBase {
 
     @Override
     protected boolean supportPartitions() {
+        // TODO support this
         return true;
     }
 

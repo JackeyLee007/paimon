@@ -28,8 +28,6 @@ import org.apache.paimon.catalog.FileSystemCatalog;
 import org.apache.paimon.catalog.Identifier;
 import org.apache.paimon.catalog.PropertyChange;
 import org.apache.paimon.catalog.RenamingSnapshotCommit;
-import org.apache.paimon.catalog.SupportsBranches;
-import org.apache.paimon.catalog.SupportsSnapshots;
 import org.apache.paimon.catalog.TableMetadata;
 import org.apache.paimon.fs.FileIO;
 import org.apache.paimon.fs.Path;
@@ -39,24 +37,22 @@ import org.apache.paimon.operation.Lock;
 import org.apache.paimon.options.CatalogOptions;
 import org.apache.paimon.options.Options;
 import org.apache.paimon.partition.Partition;
+import org.apache.paimon.partition.PartitionStatistics;
 import org.apache.paimon.rest.auth.AuthProvider;
 import org.apache.paimon.rest.auth.RESTAuthParameter;
 import org.apache.paimon.rest.requests.AlterDatabaseRequest;
-import org.apache.paimon.rest.requests.AlterPartitionsRequest;
 import org.apache.paimon.rest.requests.AlterTableRequest;
 import org.apache.paimon.rest.requests.CommitTableRequest;
 import org.apache.paimon.rest.requests.CreateBranchRequest;
 import org.apache.paimon.rest.requests.CreateDatabaseRequest;
-import org.apache.paimon.rest.requests.CreatePartitionsRequest;
 import org.apache.paimon.rest.requests.CreateTableRequest;
 import org.apache.paimon.rest.requests.CreateViewRequest;
-import org.apache.paimon.rest.requests.DropPartitionsRequest;
 import org.apache.paimon.rest.requests.MarkDonePartitionsRequest;
 import org.apache.paimon.rest.requests.RenameTableRequest;
+import org.apache.paimon.rest.requests.RollbackTableRequest;
 import org.apache.paimon.rest.responses.AlterDatabaseResponse;
 import org.apache.paimon.rest.responses.CommitTableResponse;
 import org.apache.paimon.rest.responses.ConfigResponse;
-import org.apache.paimon.rest.responses.CreateDatabaseResponse;
 import org.apache.paimon.rest.responses.ErrorResponse;
 import org.apache.paimon.rest.responses.ErrorResponseResourceType;
 import org.apache.paimon.rest.responses.GetDatabaseResponse;
@@ -77,6 +73,7 @@ import org.apache.paimon.schema.TableSchema;
 import org.apache.paimon.table.CatalogEnvironment;
 import org.apache.paimon.table.FileStoreTable;
 import org.apache.paimon.table.FileStoreTableFactory;
+import org.apache.paimon.table.Instant;
 import org.apache.paimon.table.TableSnapshot;
 import org.apache.paimon.utils.BranchManager;
 import org.apache.paimon.utils.Pair;
@@ -115,6 +112,7 @@ import static org.apache.paimon.rest.RESTObjectMapper.OBJECT_MAPPER;
 
 /** Mock REST server for testing. */
 public class RESTCatalogServer {
+
     private static final Logger LOG = LoggerFactory.getLogger(RESTCatalogServer.class);
 
     public static final int DEFAULT_MAX_RESULTS = 100;
@@ -133,7 +131,8 @@ public class RESTCatalogServer {
     private final Map<String, TableMetadata> tableMetadataStore = new HashMap<>();
     private final Map<String, List<Partition>> tablePartitionsStore = new HashMap<>();
     private final Map<String, View> viewStore = new HashMap<>();
-    private final Map<String, TableSnapshot> tableSnapshotStore = new HashMap<>();
+    private final Map<String, TableSnapshot> tableLatestSnapshotStore = new HashMap<>();
+    private final Map<String, TableSnapshot> tableWithSnapshotId2SnapshotStore = new HashMap<>();
     private final List<String> noPermissionDatabases = new ArrayList<>();
     private final List<String> noPermissionTables = new ArrayList<>();
     public final ConfigResponse configResponse;
@@ -187,10 +186,12 @@ public class RESTCatalogServer {
             long fileSizeInBytes,
             long fileCount,
             long lastFileCreationTime) {
-        tableSnapshotStore.put(
-                identifier.getFullName(),
+        TableSnapshot tableSnapshot =
                 new TableSnapshot(
-                        snapshot, recordCount, fileSizeInBytes, fileCount, lastFileCreationTime));
+                        snapshot, recordCount, fileSizeInBytes, fileCount, lastFileCreationTime);
+        tableLatestSnapshotStore.put(identifier.getFullName(), tableSnapshot);
+        tableWithSnapshotId2SnapshotStore.put(
+                geTableFullNameWithSnapshotId(identifier, snapshot.id()), tableSnapshot);
     }
 
     public void setDataToken(Identifier identifier, RESTToken token) {
@@ -273,58 +274,49 @@ public class RESTCatalogServer {
                         boolean isViewsDetails =
                                 resources.length == 2 && resources[1].startsWith("view-details");
                         boolean isTables =
-                                resources.length == 2 && resources[1].startsWith("tables");
+                                resources.length == 2
+                                        && resources[1].startsWith(ResourcePaths.TABLES);
                         boolean isTableDetails =
                                 resources.length == 2 && resources[1].startsWith("table-details");
-                        boolean isViewRename =
-                                resources.length == 3
-                                        && "views".equals(resources[1])
-                                        && "rename".equals(resources[2]);
                         boolean isView =
                                 resources.length == 3
                                         && "views".equals(resources[1])
                                         && !"rename".equals(resources[2]);
                         boolean isTable =
                                 resources.length == 3
-                                        && "tables".equals(resources[1])
+                                        && ResourcePaths.TABLES.equals(resources[1])
                                         && !"rename".equals(resources[2])
                                         && !"commit".equals(resources[2]);
                         boolean isTableToken =
                                 resources.length == 4
-                                        && "tables".equals(resources[1])
+                                        && ResourcePaths.TABLES.equals(resources[1])
                                         && "token".equals(resources[3]);
                         boolean isTableSnapshot =
                                 resources.length == 4
-                                        && "tables".equals(resources[1])
+                                        && ResourcePaths.TABLES.equals(resources[1])
                                         && "snapshot".equals(resources[3]);
                         boolean isCommitSnapshot =
                                 resources.length == 4
-                                        && "tables".equals(resources[1])
+                                        && ResourcePaths.TABLES.equals(resources[1])
                                         && "commit".equals(resources[3]);
+                        boolean isRollbackTable =
+                                resources.length == 4
+                                        && ResourcePaths.TABLES.equals(resources[1])
+                                        && ResourcePaths.ROLLBACK.equals(resources[3]);
                         boolean isPartitions =
                                 resources.length == 4
-                                        && "tables".equals(resources[1])
+                                        && ResourcePaths.TABLES.equals(resources[1])
                                         && resources[3].startsWith("partitions");
 
-                        boolean isDropPartitions =
-                                resources.length == 5
-                                        && "tables".equals(resources[1])
-                                        && "partitions".equals(resources[3])
-                                        && "drop".equals(resources[4]);
-                        boolean isAlterPartitions =
-                                resources.length == 5
-                                        && "tables".equals(resources[1])
-                                        && "partitions".equals(resources[3])
-                                        && "alter".equals(resources[4]);
                         boolean isMarkDonePartitions =
                                 resources.length == 5
-                                        && "tables".equals(resources[1])
+                                        && ResourcePaths.TABLES.equals(resources[1])
                                         && "partitions".equals(resources[3])
                                         && "mark".equals(resources[4]);
 
                         boolean isBranches =
                                 resources.length >= 4
-                                        && "tables".equals(resources[1])
+                                        && ResourcePaths.TABLES.equals(resources[1])
                                         && "branches".equals(resources[3]);
                         Identifier identifier =
                                 resources.length >= 3
@@ -333,7 +325,7 @@ public class RESTCatalogServer {
                                         ? Identifier.create(
                                                 databaseName, RESTUtil.decodeString(resources[2]))
                                         : null;
-                        if (identifier != null && "tables".equals(resources[1])) {
+                        if (identifier != null && ResourcePaths.TABLES.equals(resources[1])) {
                             if (!identifier.isSystemTable()
                                     && !tableMetadataStore.containsKey(identifier.getFullName())) {
                                 throw new Catalog.TableNotExistException(identifier);
@@ -343,10 +335,7 @@ public class RESTCatalogServer {
                             }
                         }
                         // validate partition
-                        if (isPartitions
-                                || isDropPartitions
-                                || isAlterPartitions
-                                || isMarkDonePartitions) {
+                        if (isPartitions || isMarkDonePartitions) {
                             String tableName = RESTUtil.decodeString(resources[2]);
                             Optional<MockResponse> error =
                                     checkTablePartitioned(
@@ -355,11 +344,7 @@ public class RESTCatalogServer {
                                 return error.get();
                             }
                         }
-                        if (isDropPartitions) {
-                            return dropPartitionsHandle(identifier, restAuthParameter.data());
-                        } else if (isAlterPartitions) {
-                            return alterPartitionsHandle(identifier, restAuthParameter.data());
-                        } else if (isMarkDonePartitions) {
+                        if (isMarkDonePartitions) {
                             MarkDonePartitionsRequest markDonePartitionsRequest =
                                     OBJECT_MAPPER.readValue(data, MarkDonePartitionsRequest.class);
                             catalog.markDonePartitions(
@@ -383,6 +368,26 @@ public class RESTCatalogServer {
                             return snapshotHandle(identifier);
                         } else if (isCommitSnapshot) {
                             return commitTableHandle(identifier, restAuthParameter.data());
+                        } else if (isRollbackTable) {
+                            RollbackTableRequest requestBody =
+                                    OBJECT_MAPPER.readValue(data, RollbackTableRequest.class);
+                            if (noPermissionTables.contains(identifier.getFullName())) {
+                                throw new Catalog.TableNoPermissionException(identifier);
+                            }
+                            if (!tableMetadataStore.containsKey(identifier.getFullName())) {
+                                throw new Catalog.TableNotExistException(identifier);
+                            }
+                            if (requestBody.getInstant() instanceof Instant.SnapshotInstant) {
+                                long snapshotId =
+                                        ((Instant.SnapshotInstant) requestBody.getInstant())
+                                                .getSnapshotId();
+                                return rollbackTableByIdHandle(identifier, snapshotId);
+                            } else if (requestBody.getInstant() instanceof Instant.TagInstant) {
+                                String tagName =
+                                        ((Instant.TagInstant) requestBody.getInstant())
+                                                .getTagName();
+                                return rollbackTableByTagNameHandle(identifier, tagName);
+                            }
                         } else if (isTable) {
                             return tableHandle(
                                     restAuthParameter.method(),
@@ -505,14 +510,18 @@ public class RESTCatalogServer {
                                 new ErrorResponse(
                                         null, null, e.getCause().getCause().getMessage(), 400);
                         return mockResponse(response, 400);
-                    } else if (e instanceof UnsupportedOperationException) {
+                    } else if (e instanceof UnsupportedOperationException
+                            || e.getCause() instanceof UnsupportedOperationException) {
                         response = new ErrorResponse(null, null, e.getMessage(), 501);
                         return mockResponse(response, 501);
-                    } else if (e instanceof IllegalStateException) {
+                    } else if (e instanceof IllegalStateException
+                            || e.getCause() instanceof IllegalStateException) {
                         response = new ErrorResponse(null, null, e.getMessage(), 500);
                         return mockResponse(response, 500);
                     }
-                    return new MockResponse().setResponseCode(500);
+                    return new MockResponse()
+                            .setResponseCode(500)
+                            .setBody(e.getCause().getMessage());
                 }
             }
         };
@@ -542,7 +551,7 @@ public class RESTCatalogServer {
     private MockResponse snapshotHandle(Identifier identifier) throws Exception {
         RESTResponse response;
         Optional<TableSnapshot> snapshotOptional =
-                Optional.ofNullable(tableSnapshotStore.get(identifier.getFullName()));
+                Optional.ofNullable(tableLatestSnapshotStore.get(identifier.getFullName()));
         if (!snapshotOptional.isPresent()) {
             response =
                     new ErrorResponse(
@@ -583,23 +592,60 @@ public class RESTCatalogServer {
         if (!tableMetadataStore.containsKey(identifier.getFullName())) {
             throw new Catalog.TableNotExistException(identifier);
         }
-        FileStoreTable table = getFileTable(identifier);
-        RenamingSnapshotCommit commit =
-                new RenamingSnapshotCommit(table.snapshotManager(), Lock.empty());
-        String branchName = identifier.getBranchName();
-        if (branchName == null) {
-            branchName = "main";
-        }
         boolean success =
-                commit.commit(requestBody.getSnapshot(), branchName, Collections.emptyList());
-        commitSnapshot(identifier, requestBody.getSnapshot(), null);
+                commitSnapshot(identifier, requestBody.getSnapshot(), requestBody.getStatistics());
         CommitTableResponse response = new CommitTableResponse(success);
         return mockResponse(response, 200);
     }
 
+    private MockResponse rollbackTableByIdHandle(Identifier identifier, long snapshotId)
+            throws Exception {
+        FileStoreTable table = getFileTable(identifier);
+        String identifierWithSnapshotId = geTableFullNameWithSnapshotId(identifier, snapshotId);
+        if (tableWithSnapshotId2SnapshotStore.containsKey(identifierWithSnapshotId)) {
+            rollbackTo(identifier, table, snapshotId);
+            return new MockResponse().setResponseCode(200);
+        }
+        return mockResponse(
+                new ErrorResponse(ErrorResponseResourceType.SNAPSHOT, "" + snapshotId, "", 404),
+                404);
+    }
+
+    private MockResponse rollbackTableByTagNameHandle(Identifier identifier, String tagName)
+            throws Exception {
+        FileStoreTable table = getFileTable(identifier);
+        boolean isExist = table.tagManager().tagExists(tagName);
+        if (isExist) {
+            table.tagManager().get(tagName);
+            Snapshot snapshot = table.tagManager().getOrThrow(tagName).trimToSnapshot();
+            String identifierWithSnapshotId =
+                    geTableFullNameWithSnapshotId(identifier, snapshot.id());
+            if (tableWithSnapshotId2SnapshotStore.containsKey(identifierWithSnapshotId)) {
+                rollbackTo(identifier, table, snapshot.id());
+                return new MockResponse().setResponseCode(200);
+            }
+        }
+        return mockResponse(
+                new ErrorResponse(ErrorResponseResourceType.TAG, "" + tagName, "", 404), 404);
+    }
+
+    private void rollbackTo(Identifier identifier, FileStoreTable table, Long snapshotId) {
+        String identifierWithSnapshotId = geTableFullNameWithSnapshotId(identifier, snapshotId);
+        long latestSnapshotId = table.latestSnapshot().get().id();
+        if (latestSnapshotId > snapshotId) {
+            for (long i = snapshotId + 1; i < latestSnapshotId + 1; i++) {
+                tableWithSnapshotId2SnapshotStore.remove(
+                        geTableFullNameWithSnapshotId(identifier, i));
+            }
+        }
+        table.rollbackTo(snapshotId);
+        tableLatestSnapshotStore.put(
+                identifier.getFullName(),
+                tableWithSnapshotId2SnapshotStore.get(identifierWithSnapshotId));
+    }
+
     private MockResponse databasesApiHandler(
             String method, String data, Map<String, String> parameters) throws Exception {
-        RESTResponse response;
         switch (method) {
             case "GET":
                 List<String> databases = new ArrayList<>(databaseStore.keySet());
@@ -614,8 +660,7 @@ public class RESTCatalogServer {
                 catalog.createDatabase(databaseName, false);
                 databaseStore.put(
                         databaseName, Database.of(databaseName, requestBody.getOptions(), null));
-                response = new CreateDatabaseResponse(databaseName, requestBody.getOptions());
-                return mockResponse(response, 200);
+                return new MockResponse().setResponseCode(200);
             default:
                 return new MockResponse().setResponseCode(404);
         }
@@ -699,7 +744,12 @@ public class RESTCatalogServer {
                             new GetDatabaseResponse(
                                     UUID.randomUUID().toString(),
                                     database.name(),
-                                    database.options());
+                                    database.options(),
+                                    "owner",
+                                    1L,
+                                    "created",
+                                    1L,
+                                    "updated");
                     return mockResponse(response, 200);
                 case "DELETE":
                     catalog.dropDatabase(databaseName, false, true);
@@ -768,7 +818,7 @@ public class RESTCatalogServer {
                         tableMetadata =
                                 createTableMetadata(
                                         requestBody.getIdentifier(),
-                                        1L,
+                                        0L,
                                         requestBody.getSchema(),
                                         UUID.randomUUID().toString(),
                                         false);
@@ -870,7 +920,12 @@ public class RESTCatalogServer {
                                 identifier.getTableName(),
                                 entry.getValue().isExternal(),
                                 entry.getValue().schema().id(),
-                                entry.getValue().schema().toSchema());
+                                entry.getValue().schema().toSchema(),
+                                "owner",
+                                1L,
+                                "created",
+                                1L,
+                                "updated");
                 tableDetails.add(getTableResponse);
             }
         }
@@ -890,7 +945,6 @@ public class RESTCatalogServer {
         switch (method) {
             case "GET":
                 TableMetadata tableMetadata;
-                identifier.isSystemTable();
                 if (identifier.isSystemTable()) {
                     TableSchema schema = catalog.loadTableSchema(identifier);
                     tableMetadata =
@@ -905,7 +959,12 @@ public class RESTCatalogServer {
                                 identifier.getTableName(),
                                 tableMetadata.isExternal(),
                                 tableMetadata.schema().id(),
-                                tableMetadata.schema().toSchema());
+                                tableMetadata.schema().toSchema(),
+                                "owner",
+                                1L,
+                                "created",
+                                1L,
+                                "updated");
                 return mockResponse(response, 200);
             case "POST":
                 AlterTableRequest requestBody =
@@ -919,6 +978,8 @@ public class RESTCatalogServer {
                     System.out.println(e.getMessage());
                 }
                 tableMetadataStore.remove(identifier.getFullName());
+                tableLatestSnapshotStore.remove(identifier.getFullName());
+                tablePartitionsStore.remove(identifier.getFullName());
                 return new MockResponse().setResponseCode(200);
             default:
                 return new MockResponse().setResponseCode(404);
@@ -960,15 +1021,6 @@ public class RESTCatalogServer {
                     }
                 }
                 return generateFinalListPartitionsResponse(parameters, partitions);
-            case "POST":
-                CreatePartitionsRequest requestBody =
-                        OBJECT_MAPPER.readValue(data, CreatePartitionsRequest.class);
-                tablePartitionsStore.put(
-                        tableIdentifier.getFullName(),
-                        requestBody.getPartitionSpecs().stream()
-                                .map(partition -> spec2Partition(partition))
-                                .collect(Collectors.toList()));
-                return new MockResponse().setResponseCode(200);
             default:
                 return new MockResponse().setResponseCode(404);
         }
@@ -1208,7 +1260,15 @@ public class RESTCatalogServer {
                                             view.dialects(),
                                             view.comment().orElse(null),
                                             view.options());
-                            return new GetViewResponse("id", identifier.getTableName(), schema);
+                            return new GetViewResponse(
+                                    "id",
+                                    identifier.getTableName(),
+                                    schema,
+                                    "owner",
+                                    1L,
+                                    "created",
+                                    1L,
+                                    "updated");
                         })
                 .collect(Collectors.toList());
     }
@@ -1227,7 +1287,16 @@ public class RESTCatalogServer {
                                         view.dialects(),
                                         view.comment().orElse(null),
                                         view.options());
-                        response = new GetViewResponse("id", identifier.getTableName(), schema);
+                        response =
+                                new GetViewResponse(
+                                        "id",
+                                        identifier.getTableName(),
+                                        schema,
+                                        "owner",
+                                        1L,
+                                        "created",
+                                        1L,
+                                        "updated");
                         return mockResponse(response, 200);
                     }
                     throw new Catalog.ViewNotExistException(identifier);
@@ -1291,8 +1360,12 @@ public class RESTCatalogServer {
         }
     }
 
+    private String geTableFullNameWithSnapshotId(Identifier identifier, long snapshotId) {
+        return String.format("%s-%d", identifier.getFullName(), snapshotId);
+    }
+
     private boolean commitSnapshot(
-            Identifier identifier, Snapshot snapshot, List<Partition> statistics)
+            Identifier identifier, Snapshot snapshot, List<PartitionStatistics> statistics)
             throws Catalog.TableNotExistException {
         FileStoreTable table = getFileTable(identifier);
         RenamingSnapshotCommit commit =
@@ -1301,104 +1374,124 @@ public class RESTCatalogServer {
         if (branchName == null) {
             branchName = "main";
         }
+        TableSnapshot tableSnapshot;
         try {
             boolean success = commit.commit(snapshot, branchName, Collections.emptyList());
-            tableSnapshotStore.compute(
-                    identifier.getFullName(),
-                    (k, old) -> {
-                        long recordCount = 0;
-                        long fileSizeInBytes = 0;
-                        long fileCount = 0;
-                        long lastFileCreationTime = 0;
-                        if (statistics != null) {
-                            for (Partition partition : statistics) {
-                                recordCount += partition.recordCount();
-                                fileSizeInBytes += partition.fileSizeInBytes();
-                                fileCount += partition.fileCount();
-                                if (partition.lastFileCreationTime() > lastFileCreationTime) {
-                                    lastFileCreationTime = partition.lastFileCreationTime();
+            // update snapshot and stats
+            tableSnapshot =
+                    tableLatestSnapshotStore.compute(
+                            identifier.getFullName(),
+                            (k, old) -> {
+                                long recordCount = 0;
+                                long fileSizeInBytes = 0;
+                                long fileCount = 0;
+                                long lastFileCreationTime = 0;
+                                if (statistics != null) {
+                                    for (PartitionStatistics stats : statistics) {
+                                        recordCount += stats.recordCount();
+                                        fileSizeInBytes += stats.fileSizeInBytes();
+                                        fileCount += stats.fileCount();
+                                        if (stats.lastFileCreationTime() > lastFileCreationTime) {
+                                            lastFileCreationTime = stats.lastFileCreationTime();
+                                        }
+                                    }
                                 }
+                                if (old != null) {
+                                    recordCount += old.recordCount();
+                                    fileSizeInBytes += old.fileSizeInBytes();
+                                    fileCount += old.fileCount();
+                                    if (old.lastFileCreationTime() > lastFileCreationTime) {
+                                        lastFileCreationTime = old.lastFileCreationTime();
+                                    }
+                                }
+                                return new TableSnapshot(
+                                        snapshot,
+                                        recordCount,
+                                        fileCount,
+                                        lastFileCreationTime,
+                                        fileSizeInBytes);
+                            });
+            tableWithSnapshotId2SnapshotStore.put(
+                    geTableFullNameWithSnapshotId(identifier, snapshot.id()), tableSnapshot);
+            // upsert partitions stats
+            if (!tablePartitionsStore.containsKey(identifier.getFullName())) {
+                if (statistics != null) {
+                    List<Partition> newPartitions =
+                            statistics.stream()
+                                    .map(
+                                            stats ->
+                                                    new Partition(
+                                                            stats.spec(),
+                                                            stats.recordCount(),
+                                                            stats.fileSizeInBytes(),
+                                                            stats.fileCount(),
+                                                            stats.lastFileCreationTime(),
+                                                            false))
+                                    .collect(Collectors.toList());
+                    tablePartitionsStore.put(identifier.getFullName(), newPartitions);
+                }
+            } else {
+                tablePartitionsStore.compute(
+                        identifier.getFullName(),
+                        (k, oldPartitions) -> {
+                            if (oldPartitions == null || statistics == null) {
+                                return oldPartitions;
                             }
-                        }
-                        if (old != null) {
-                            recordCount += old.recordCount();
-                            fileSizeInBytes += old.fileSizeInBytes();
-                            fileCount += old.fileCount();
-                            if (old.lastFileCreationTime() > lastFileCreationTime) {
-                                lastFileCreationTime = old.lastFileCreationTime();
-                            }
-                        }
-                        return new TableSnapshot(
-                                snapshot,
-                                recordCount,
-                                fileCount,
-                                lastFileCreationTime,
-                                fileSizeInBytes);
-                    });
+                            Map<Map<String, String>, PartitionStatistics> partitionStatisticsMap =
+                                    statistics.stream()
+                                            .collect(
+                                                    Collectors.toMap(
+                                                            PartitionStatistics::spec,
+                                                            y -> y,
+                                                            (a, b) -> a));
+                            List<Partition> updatedPartitions =
+                                    oldPartitions.stream()
+                                            .map(
+                                                    oldPartition -> {
+                                                        PartitionStatistics stats =
+                                                                partitionStatisticsMap.get(
+                                                                        oldPartition.spec());
+                                                        if (stats == null) {
+                                                            return oldPartition; // 如果没有新的统计信息，保持原样
+                                                        }
+                                                        return new Partition(
+                                                                oldPartition.spec(),
+                                                                oldPartition.recordCount()
+                                                                        + stats.recordCount(),
+                                                                oldPartition.fileSizeInBytes()
+                                                                        + stats.fileSizeInBytes(),
+                                                                oldPartition.fileCount()
+                                                                        + stats.fileCount(),
+                                                                Math.max(
+                                                                        oldPartition
+                                                                                .lastFileCreationTime(),
+                                                                        stats
+                                                                                .lastFileCreationTime()),
+                                                                oldPartition.done());
+                                                    })
+                                            .collect(Collectors.toList());
+                            return updatedPartitions;
+                        });
+            }
+            // clean up partitions
+            tablePartitionsStore
+                    .entrySet()
+                    .removeIf(
+                            entry -> {
+                                List<Partition> partitions = entry.getValue();
+                                if (partitions == null) {
+                                    return true;
+                                }
+                                partitions.removeIf(
+                                        partition ->
+                                                partition.fileSizeInBytes() <= 0
+                                                        && partition.fileCount() <= 0
+                                                        && partition.recordCount() <= 0);
+                                return partitions.isEmpty();
+                            });
             return success;
         } catch (Exception e) {
             throw new RuntimeException(e);
-        }
-    }
-
-    private MockResponse dropPartitionsHandle(Identifier identifier, String data)
-            throws Catalog.TableNotExistException, JsonProcessingException {
-        DropPartitionsRequest dropPartitionsRequest =
-                OBJECT_MAPPER.readValue(data, DropPartitionsRequest.class);
-        List<Map<String, String>> partitionSpecs = dropPartitionsRequest.getPartitionSpecs();
-        if (tableMetadataStore.containsKey(identifier.getFullName())) {
-            List<Partition> existPartitions = tablePartitionsStore.get(identifier.getFullName());
-            partitionSpecs.forEach(
-                    partition -> {
-                        for (Map.Entry<String, String> entry : partition.entrySet()) {
-                            existPartitions.stream()
-                                    .filter(
-                                            p ->
-                                                    p.spec().containsKey(entry.getKey())
-                                                            && p.spec()
-                                                                    .get(entry.getKey())
-                                                                    .equals(entry.getValue()))
-                                    .findFirst()
-                                    .ifPresent(
-                                            existPartition ->
-                                                    existPartitions.remove(existPartition));
-                        }
-                    });
-            return new MockResponse().setResponseCode(200);
-
-        } else {
-            throw new Catalog.TableNotExistException(identifier);
-        }
-    }
-
-    private MockResponse alterPartitionsHandle(Identifier identifier, String data)
-            throws Catalog.TableNotExistException, JsonProcessingException {
-        if (tableMetadataStore.containsKey(identifier.getFullName())) {
-            AlterPartitionsRequest alterPartitionsRequest =
-                    OBJECT_MAPPER.readValue(data, AlterPartitionsRequest.class);
-            List<Partition> partitions = alterPartitionsRequest.getPartitions();
-            List<Partition> existPartitions = tablePartitionsStore.get(identifier.getFullName());
-            partitions.forEach(
-                    partition -> {
-                        for (Map.Entry<String, String> entry : partition.spec().entrySet()) {
-                            existPartitions.stream()
-                                    .filter(
-                                            p ->
-                                                    p.spec().containsKey(entry.getKey())
-                                                            && p.spec()
-                                                                    .get(entry.getKey())
-                                                                    .equals(entry.getValue()))
-                                    .findFirst()
-                                    .ifPresent(
-                                            existPartition ->
-                                                    existPartitions.remove(existPartition));
-                        }
-                    });
-            existPartitions.addAll(partitions);
-            tablePartitionsStore.put(identifier.getFullName(), existPartitions);
-            return new MockResponse().setResponseCode(200);
-        } else {
-            throw new Catalog.TableNotExistException(identifier);
         }
     }
 
@@ -1437,11 +1530,6 @@ public class RESTCatalogServer {
         return createTableMetadata(identifier, 1L, schema, UUID.randomUUID().toString(), true);
     }
 
-    private Partition spec2Partition(Map<String, String> spec) {
-        // todo: need update
-        return new Partition(spec, 123, 456, 789, 123);
-    }
-
     private FileStoreTable getFileTable(Identifier identifier)
             throws Catalog.TableNotExistException {
         if (tableMetadataStore.containsKey(identifier.getFullName())) {
@@ -1453,9 +1541,7 @@ public class RESTCatalogServer {
                             tableMetadata.uuid(),
                             catalog.catalogLoader(),
                             catalog.lockFactory().orElse(null),
-                            catalog.lockContext().orElse(null),
-                            catalog instanceof SupportsSnapshots,
-                            catalog instanceof SupportsBranches);
+                            catalog.lockContext().orElse(null));
             Path path = new Path(schema.options().get(PATH.key()));
             FileIO dataFileIO = catalog.fileIO();
             FileStoreTable table =

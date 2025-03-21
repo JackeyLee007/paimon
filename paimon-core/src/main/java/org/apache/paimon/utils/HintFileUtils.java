@@ -103,13 +103,18 @@ public class HintFileUtils {
         fileIO.delete(hintFile, false);
     }
 
+    public static void deleteEarliestHint(FileIO fileIO, Path dir) throws IOException {
+        Path hintFile = new Path(dir, EARLIEST);
+        fileIO.delete(hintFile, false);
+    }
+
     public static void commitHint(FileIO fileIO, long id, String fileName, Path dir)
             throws IOException {
         Path hintFile = new Path(dir, fileName);
         int loopTime = 3;
         while (loopTime-- > 0) {
             try {
-                fileIO.overwriteFileUtf8(hintFile, String.valueOf(id));
+                fileIO.overwriteHintFile(hintFile, String.valueOf(id));
                 return;
             } catch (IOException e) {
                 try {

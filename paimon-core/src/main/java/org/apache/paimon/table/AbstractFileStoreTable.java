@@ -62,6 +62,7 @@ import org.apache.paimon.utils.SegmentsCache;
 import org.apache.paimon.utils.SimpleFileReader;
 import org.apache.paimon.utils.SnapshotManager;
 import org.apache.paimon.utils.SnapshotNotExistException;
+import org.apache.paimon.utils.StringUtils;
 import org.apache.paimon.utils.TagManager;
 
 import org.apache.paimon.shade.caffeine2.com.github.benmanes.caffeine.cache.Cache;
@@ -541,12 +542,16 @@ abstract class AbstractFileStoreTable implements FileStoreTable {
     @Override
     public void rollbackTo(long snapshotId) {
         SnapshotManager snapshotManager = snapshotManager();
+        try {
+            snapshotManager.rollback(Instant.snapshot(snapshotId));
+            return;
+        } catch (UnsupportedOperationException ignore) {
+        }
         checkArgument(
                 snapshotManager.snapshotExists(snapshotId),
                 "Rollback snapshot '%s' doesn't exist.",
                 snapshotId);
-
-        rollbackHelper().cleanLargerThan(snapshotManager.snapshot(snapshotId));
+        rollbackHelper().updateLatestAndCleanLargerThan(snapshotManager.snapshot(snapshotId));
     }
 
     public Snapshot findSnapshot(long fromSnapshotId) throws SnapshotNotExistException {
@@ -647,6 +652,18 @@ abstract class AbstractFileStoreTable implements FileStoreTable {
 
     @Override
     public void deleteBranch(String branchName) {
+        String fallbackBranch =
+                coreOptions().toConfiguration().get(CoreOptions.SCAN_FALLBACK_BRANCH);
+        if (!StringUtils.isNullOrWhitespaceOnly(fallbackBranch)
+                && branchName.equals(fallbackBranch)) {
+            throw new IllegalArgumentException(
+                    String.format(
+                            "can not delete the fallback branch. "
+                                    + "branchName to be deleted is %s. you have set 'scan.fallback-branch' = '%s'. "
+                                    + "you should reset 'scan.fallback-branch' before deleting this branch.",
+                            branchName, fallbackBranch));
+        }
+
         branchManager().dropBranch(branchName);
     }
 
@@ -657,18 +674,24 @@ abstract class AbstractFileStoreTable implements FileStoreTable {
 
     @Override
     public void rollbackTo(String tagName) {
+        SnapshotManager snapshotManager = snapshotManager();
+        try {
+            snapshotManager.rollback(Instant.tag(tagName));
+            return;
+        } catch (UnsupportedOperationException ignore) {
+
+        }
         TagManager tagManager = tagManager();
         checkArgument(tagManager.tagExists(tagName), "Rollback tag '%s' doesn't exist.", tagName);
 
         Snapshot taggedSnapshot = tagManager.getOrThrow(tagName).trimToSnapshot();
-        rollbackHelper().cleanLargerThan(taggedSnapshot);
+        rollbackHelper().updateLatestAndCleanLargerThan(taggedSnapshot);
 
         try {
             // it is possible that the earliest snapshot is later than the rollback tag because of
             // snapshot expiration, in this case the `cleanLargerThan` method will delete all
             // snapshots, so we should write the tag file to snapshot directory and modify the
             // earliest hint
-            SnapshotManager snapshotManager = snapshotManager();
             if (!snapshotManager.snapshotExists(taggedSnapshot.id())) {
                 fileIO.writeFile(
                         snapshotManager().snapshotPath(taggedSnapshot.id()),
@@ -688,11 +711,14 @@ abstract class AbstractFileStoreTable implements FileStoreTable {
 
     @Override
     public BranchManager branchManager() {
-        if (catalogEnvironment.catalogLoader() != null && catalogEnvironment.supportsBranches()) {
-            return new CatalogBranchManager(catalogEnvironment.catalogLoader(), identifier());
+        FileSystemBranchManager branchManager =
+                new FileSystemBranchManager(
+                        fileIO, path, snapshotManager(), tagManager(), schemaManager());
+        if (catalogEnvironment.catalogLoader() != null) {
+            return new CatalogBranchManager(
+                    catalogEnvironment.catalogLoader(), identifier(), branchManager);
         }
-        return new FileSystemBranchManager(
-                fileIO, path, snapshotManager(), tagManager(), schemaManager());
+        return branchManager;
     }
 
     @Override
