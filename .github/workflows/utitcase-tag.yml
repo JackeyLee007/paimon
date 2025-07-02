@@ -58,6 +58,6 @@ jobs:
           jvm_timezone=$(random_timezone)
           echo "JVM timezone is set to $jvm_timezone"
 
-          mvn -T 2C -B clean install -pl "org.apache.paimon:paimon-core" -Pskip-paimon-flink-tests -Duser.timezone=$jvm_timezone -Dtest=TagAutoManagerTest#testExpireTagsByTimeRetained,TagAutoManagerTest#testOnlyExpireAutoCreatedTag,TagAutoManagerTest#testSavepointTag
+          mvn -T 2C -B test -pl "org.apache.paimon:paimon-core" -Pskip-paimon-flink-tests -Duser.timezone=$jvm_timezone -Dtest=TagAutoManagerTest#testExpireTagsByTimeRetained,TagAutoManagerTest#testOnlyExpireAutoCreatedTag,TagAutoManagerTest#testSavepointTag
         env:
           MAVEN_OPTS: -Xmx4096m -XX:+UseG1GC -XX:CICompilerCount=2
