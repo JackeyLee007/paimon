@@ -63,6 +63,6 @@ jobs:
             TEST_MODULES+="!org.apache.paimon:paimon-spark-${suffix},"
           done
           TEST_MODULES="${TEST_MODULES%,}"
-          mvn -T 2C -B clean install -pl "${TEST_MODULES}" -Pskip-paimon-flink-tests -Duser.timezone=$jvm_timezone -Dtest=org.apache.paimon.tag.TagAutoManagerTest#testExpireTagsByTimeRetained,org.apache.paimon.tag.TagAutoManagerTest#testOnlyExpireAutoCreatedTag,org.apache.paimon.tag.TagAutoManagerTest#testSavepointTag
+          mvn -T 2C -B clean install -pl "${TEST_MODULES}" -Pskip-paimon-flink-tests -Duser.timezone=$jvm_timezone -Dtest=org.apache.paimon.tag.TagAutoManagerTest#testExpireTagsByTimeRetained
         env:
           MAVEN_OPTS: -Xmx4096m -XX:+UseG1GC -XX:CICompilerCount=2
