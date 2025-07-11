@@ -1512,6 +1512,12 @@ public class CoreOptions implements Serializable {
                     .defaultValue(false)
                     .withDescription("Whether to automatically complete missing tags.");
 
+    public static final ConfigOption<Boolean> TAG_THROW_EXCEPTION_ON_FAILURE =
+            key("tag.throw-exception-on-failure")
+                    .booleanType()
+                    .defaultValue(true)
+                    .withDescription("Whether to thow exception when tag creation failed.");
+
     public static final ConfigOption<String> TAG_BATCH_CUSTOMIZED_NAME =
             key("tag.batch.customized-name")
                     .stringType()
@@ -2648,6 +2654,10 @@ public class CoreOptions implements Serializable {
 
     public boolean tagAutomaticCompletion() {
         return options.get(TAG_AUTOMATIC_COMPLETION);
+    }
+
+    public boolean tagThrowExceptionOnFailure() {
+        return options.get(TAG_THROW_EXCEPTION_ON_FAILURE);
     }
 
     public String tagBatchCustomizedName() {

@@ -68,18 +68,24 @@ public class TagManager {
     private final Path tablePath;
     private final String branch;
     @Nullable private final TagPeriodHandler tagPeriodHandler;
+    private final boolean throwExceptionOnFailure;
 
     public TagManager(FileIO fileIO, Path tablePath) {
-        this(fileIO, tablePath, DEFAULT_MAIN_BRANCH, (TagPeriodHandler) null);
+        this(fileIO, tablePath, DEFAULT_MAIN_BRANCH, (TagPeriodHandler) null, true);
     }
 
     public TagManager(FileIO fileIO, Path tablePath, String branch) {
-        this(fileIO, tablePath, branch, (TagPeriodHandler) null);
+        this(fileIO, tablePath, branch, (TagPeriodHandler) null, true);
     }
 
     /** Specify the default branch for data writing. */
     public TagManager(FileIO fileIO, Path tablePath, String branch, CoreOptions options) {
-        this(fileIO, tablePath, branch, createIfNecessary(options));
+        this(
+                fileIO,
+                tablePath,
+                branch,
+                createIfNecessary(options),
+                options.tagThrowExceptionOnFailure());
     }
 
     @Nullable
@@ -93,18 +99,21 @@ public class TagManager {
             FileIO fileIO,
             Path tablePath,
             String branch,
-            @Nullable TagPeriodHandler tagPeriodHandler) {
+            @Nullable TagPeriodHandler tagPeriodHandler,
+            boolean throwExceptionOnFailure) {
         this.fileIO = fileIO;
         this.tablePath = tablePath;
         this.branch = branch;
         this.tagPeriodHandler = tagPeriodHandler;
+        this.throwExceptionOnFailure = throwExceptionOnFailure;
     }
 
     // TODO: Current usage of this method only use the tag directory of new branch.
     // If we will use the new branch TagManager to create tag, we need to pass TagPeriodHandler
     // according to branch options.
     public TagManager copyWithBranch(String branchName) {
-        return new TagManager(fileIO, tablePath, branchName, (TagPeriodHandler) null);
+        return new TagManager(
+                fileIO, tablePath, branchName, (TagPeriodHandler) null, throwExceptionOnFailure);
     }
 
     /** Return the root Directory of tags. */
@@ -173,12 +182,16 @@ public class TagManager {
         try {
             fileIO.overwriteFileUtf8(tagPath, content);
         } catch (IOException e) {
-            throw new RuntimeException(
+            String msg =
                     String.format(
                             "Exception occurs when committing tag '%s' (path %s). "
                                     + "Cannot clean up because we can't determine the success.",
-                            tagName, tagPath),
-                    e);
+                            tagName, tagPath);
+            if (throwExceptionOnFailure) {
+                throw new RuntimeException(msg, e);
+            } else {
+                LOG.warn(msg);
+            }
         }
 
         if (callbacks != null) {
@@ -474,10 +487,14 @@ public class TagManager {
 
         List<String> autoTags = tags(tagPeriodHandler::isAutoTag).get(snapshot);
         if (autoTags != null) {
-            throw new RuntimeException(
+            String msg =
                     String.format(
-                            "Snapshot %s is already auto-tagged with %s.",
-                            snapshot.id(), autoTags));
+                            "Snapshot %s is already auto-tagged with %s.", snapshot.id(), autoTags);
+            if (throwExceptionOnFailure) {
+                throw new RuntimeException(msg);
+            } else {
+                LOG.warn(msg);
+            }
         }
     }
 }
