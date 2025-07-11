@@ -1516,7 +1516,7 @@ public class CoreOptions implements Serializable {
             key("tag.throw-exception-on-failure")
                     .booleanType()
                     .defaultValue(true)
-                    .withDescription("Whether to thow exception when tag creation failed.");
+                    .withDescription("Whether to throw exception when tag creation fail.");
 
     public static final ConfigOption<String> TAG_BATCH_CUSTOMIZED_NAME =
             key("tag.batch.customized-name")
