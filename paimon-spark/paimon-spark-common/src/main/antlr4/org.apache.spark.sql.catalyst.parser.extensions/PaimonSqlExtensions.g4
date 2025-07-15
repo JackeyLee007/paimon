@@ -160,6 +160,7 @@ nonReserved
 
 ALTER: 'ALTER';
 AS: 'AS';
+AUTO: 'AUTO';
 CALL: 'CALL';
 CREATE: 'CREATE';
 DAYS: 'DAYS';
