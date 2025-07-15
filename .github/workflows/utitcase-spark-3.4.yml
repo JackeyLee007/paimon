@@ -54,10 +54,10 @@ jobs:
           jvm_timezone=$(random_timezone)
           echo "JVM timezone is set to $jvm_timezone"
           test_modules=""
-          for suffix in ut; do
+          for suffix in ut 3.5 3.4 3.3 3.2; do
           test_modules+="org.apache.paimon:paimon-spark-${suffix},"
           done
           test_modules="${test_modules%,}"
-          mvn -T 2C -B test -pl "${test_modules}" -Duser.timezone=$jvm_timezone -Dtest=org.apache.paimon.spark.sql.TagDdlTest
+          mvn -T 2C -B test -pl "${test_modules}" -Duser.timezone=$jvm_timezone -Dtest=org.apache.paimon.spark.sql.TagDdlTest -DfailIfNoTests=false
         env:
           MAVEN_OPTS: -Xmx4096m
