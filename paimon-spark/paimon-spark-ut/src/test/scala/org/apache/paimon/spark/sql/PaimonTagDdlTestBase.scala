@@ -231,11 +231,11 @@ abstract class PaimonTagDdlTestBase extends PaimonSparkTestBase {
     assertResult(0)(spark.sql("show tags T").count())
 
     spark.sql("""alter table T set tblproperties(
-        |'tag.automatic-creation'='process-time',
-        |'tag.creation-period'='daily',
-        |'tag.creation-delay'='10 m',
-        |'tag.num-retained-max'='90'
-        |)""")
+                |'tag.automatic-creation'='process-time',
+                |'tag.creation-period'='daily',
+                |'tag.creation-delay'='10 m',
+                |'tag.num-retained-max'='90'
+                |)""".stripMargin)
 
     spark.sql("alter table T create auto tag")
     assertResult(1)(spark.sql("show tags T").count())
