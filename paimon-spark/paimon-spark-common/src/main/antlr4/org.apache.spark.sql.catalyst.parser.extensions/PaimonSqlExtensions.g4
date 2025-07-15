@@ -152,7 +152,7 @@ quotedIdentifier
     ;
 
 nonReserved
-    : ALTER | AS | CALL | CREATE | DAYS | DELETE | EXISTS | HOURS | IF | NOT | OF | OR | TABLE
+    : ALTER | AS | AUTO | CALL | CREATE | DAYS | DELETE | EXISTS | HOURS | IF | NOT | OF | OR | TABLE
     | REPLACE | RETAIN | VERSION | TAG
     | TRUE | FALSE
     | MAP
