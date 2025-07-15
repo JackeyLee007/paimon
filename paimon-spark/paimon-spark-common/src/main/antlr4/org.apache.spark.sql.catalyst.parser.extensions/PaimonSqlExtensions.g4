@@ -72,6 +72,7 @@ statement
     : CALL multipartIdentifier '(' (callArgument (',' callArgument)*)? ')'                  #call
     | SHOW TAGS multipartIdentifier                                                         #showTags
     | ALTER TABLE multipartIdentifier createReplaceTagClause                                #createOrReplaceTag
+    | ALTER TABLE multipartIdentifier CREATE AUTO TAG                                       #createAutoTag
     | ALTER TABLE multipartIdentifier DELETE TAG (IF EXISTS)? identifier                    #deleteTag
     | ALTER TABLE multipartIdentifier RENAME TAG identifier TO identifier                   #renameTag
   ;
