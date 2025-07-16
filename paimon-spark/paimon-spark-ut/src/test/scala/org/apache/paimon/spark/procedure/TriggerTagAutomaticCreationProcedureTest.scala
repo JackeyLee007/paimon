@@ -46,7 +46,13 @@ class TriggerTagAutomaticCreationProcedureTest extends PaimonSparkTestBase {
                 |'tag.num-retained-max'='90'
                 |)""".stripMargin)
 
-    spark.sql("CALL paimon.sys.trigger_tag_automatic_creation(table => 'test.T')")
+    checkAnswer(
+      spark.sql("CALL paimon.sys.trigger_tag_automatic_creation(table => 'test.T')"),
+      Row(true) :: Nil)
+    checkAnswer(
+      spark.sql("SELECT tag_name FROM paimon.test.`T$tags`"),
+      spark.sql("select date_format(date_sub(current_date(), 1), 'yyyy-MM-dd')"))
+
     assertResult(1)(spark.sql("show tags T").count())
     assertResult(
       spark
