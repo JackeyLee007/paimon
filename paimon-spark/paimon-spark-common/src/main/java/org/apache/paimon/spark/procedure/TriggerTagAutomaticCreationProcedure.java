@@ -19,6 +19,7 @@
 package org.apache.paimon.spark.procedure;
 
 import org.apache.paimon.table.FileStoreTable;
+
 import org.apache.spark.sql.catalyst.InternalRow;
 import org.apache.spark.sql.connector.catalog.Identifier;
 import org.apache.spark.sql.connector.catalog.TableCatalog;
