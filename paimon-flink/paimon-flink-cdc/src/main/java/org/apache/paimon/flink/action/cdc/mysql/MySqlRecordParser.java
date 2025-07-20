@@ -258,9 +258,10 @@ public class MySqlRecordParser implements FlatMapFunction<CdcSourceRecord, RichC
                             serverTimeZone);
             resultMap.put(fieldName, newValue);
             int scale = newValue.length() - newValue.indexOf(".") - 1;
-            schemaBuilder.column(
-                    fieldName,
-                    MySqlTypeUtils.toDataType(mySqlType, newValue.length(), scale, typeMapping));
+            Tuple3<String, Integer, Integer> typeInfo = MySqlTypeUtils.getTypeInfo(mySqlType);
+            DataType paimonDataType =
+                    MySqlTypeUtils.toDataType(typeInfo.f0, typeInfo.f1, typeInfo.f2, typeMapping);
+            schemaBuilder.column(fieldName, paimonDataType);
         }
 
         // generate values of computed columns
