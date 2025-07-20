@@ -115,7 +115,7 @@ public class TruncateComputerTest {
 
             Expression.TruncateComputer truncateComputer =
                     new Expression.TruncateComputer(field, dataType, literal);
-            assertThat(truncateComputer.eval(value, DataTypes.STRING())).isEqualTo(expected);
+            assertThat(truncateComputer.eval(value, dataType)).isEqualTo(expected);
         }
     }
 
