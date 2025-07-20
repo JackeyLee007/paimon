@@ -235,6 +235,8 @@ public class MySqlRecordParser implements FlatMapFunction<CdcSourceRecord, RichC
 
         Map<String, DebeziumEvent.Field> fields = schema.beforeAndAfterFields();
 
+        CdcSchema.Builder schemaBuilder = CdcSchema.newBuilder();
+
         LinkedHashMap<String, String> resultMap = new LinkedHashMap<>();
         for (Map.Entry<String, DebeziumEvent.Field> field : fields.entrySet()) {
             String fieldName = field.getKey();
@@ -255,13 +257,20 @@ public class MySqlRecordParser implements FlatMapFunction<CdcSourceRecord, RichC
                             objectValue,
                             serverTimeZone);
             resultMap.put(fieldName, newValue);
+            int scale = newValue.length() - newValue.indexOf(".") - 1;
+            schemaBuilder.column(
+                    fieldName,
+                    MySqlTypeUtils.toDataType(mySqlType, newValue.length(), scale, typeMapping));
         }
 
         // generate values of computed columns
         for (ComputedColumn computedColumn : computedColumns) {
+            String refName = computedColumn.fieldReference();
+            DataType refType = schemaBuilder.getFieldType(refName);
             resultMap.put(
                     computedColumn.columnName(),
-                    computedColumn.eval(resultMap.get(computedColumn.fieldReference())));
+                    computedColumn.eval(resultMap.get(refName), refType));
+            schemaBuilder.column(computedColumn.columnName(), refType);
         }
 
         for (CdcMetadataConverter metadataConverter : metadataConverters) {
