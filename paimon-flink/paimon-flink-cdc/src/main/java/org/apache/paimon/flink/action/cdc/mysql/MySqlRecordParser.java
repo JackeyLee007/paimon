@@ -32,6 +32,7 @@ import org.apache.paimon.types.RowKind;
 import org.apache.paimon.utils.JsonSerdeUtil;
 import org.apache.paimon.utils.Preconditions;
 
+import org.apache.paimon.shade.jackson2.com.fasterxml.jackson.core.type.TypeReference;
 import org.apache.paimon.shade.jackson2.com.fasterxml.jackson.databind.DeserializationFeature;
 import org.apache.paimon.shade.jackson2.com.fasterxml.jackson.databind.JsonNode;
 import org.apache.paimon.shade.jackson2.com.fasterxml.jackson.databind.ObjectMapper;
@@ -42,7 +43,6 @@ import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.Table;
 import io.debezium.relational.history.TableChanges;
 import org.apache.flink.api.common.functions.FlatMapFunction;
-import org.apache.flink.api.java.tuple.Tuple3;
 import org.apache.flink.cdc.connectors.mysql.source.config.MySqlSourceOptions;
 import org.apache.flink.cdc.debezium.table.DebeziumOptions;
 import org.apache.flink.configuration.ConfigOption;
@@ -236,12 +236,16 @@ public class MySqlRecordParser implements FlatMapFunction<CdcSourceRecord, RichC
 
         Map<String, DebeziumEvent.Field> fields = schema.beforeAndAfterFields();
 
+        ObjectMapper objectMapper = new ObjectMapper();
+
         CdcSchema.Builder schemaBuilder = CdcSchema.newBuilder();
 
         LinkedHashMap<String, String> resultMap = new LinkedHashMap<>();
+
         for (Map.Entry<String, DebeziumEvent.Field> field : fields.entrySet()) {
             String fieldName = field.getKey();
-            String mySqlType = field.getValue().type();
+            String debeziumType = field.getValue().type();
+
             JsonNode objectValue = recordRow.get(fieldName);
             if (isNull(objectValue)) {
                 continue;
@@ -252,15 +256,24 @@ public class MySqlRecordParser implements FlatMapFunction<CdcSourceRecord, RichC
             String newValue =
                     DebeziumSchemaUtils.transformRawValue(
                             oldValue,
-                            mySqlType,
+                            debeziumType,
                             className,
                             typeMapping,
                             objectValue,
                             serverTimeZone);
             resultMap.put(fieldName, newValue);
-            Tuple3<String, Integer, Integer> typeInfo = MySqlTypeUtils.getTypeInfo(mySqlType);
+
+            // record the field data type for computed columns reference
+            JsonNode parametersNode = field.getValue().parameters();
+            Map<String, String> parametersMap =
+                    isNull(parametersNode)
+                            ? Collections.emptyMap()
+                            : JsonSerdeUtil.convertValue(
+                                    parametersNode,
+                                    new TypeReference<HashMap<String, String>>() {});
+
             DataType paimonDataType =
-                    MySqlTypeUtils.toDataType(typeInfo.f0, typeInfo.f1, typeInfo.f2, typeMapping);
+                    DebeziumSchemaUtils.toDataType(debeziumType, className, parametersMap);
             schemaBuilder.column(fieldName, paimonDataType);
         }
 
