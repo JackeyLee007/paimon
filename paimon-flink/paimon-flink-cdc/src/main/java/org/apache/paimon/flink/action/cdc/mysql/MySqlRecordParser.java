@@ -275,12 +275,25 @@ public class MySqlRecordParser implements FlatMapFunction<CdcSourceRecord, RichC
             DataType paimonDataType =
                     DebeziumSchemaUtils.toDataType(debeziumType, className, parametersMap);
             schemaBuilder.column(fieldName, paimonDataType);
+            LOG.info(
+                    "RefType Record: fieldName:{}, debeziumType:{}, className:{}, parametersMap:{}, paimonDataType:{}",
+                    fieldName,
+                    debeziumType,
+                    className,
+                    parametersMap,
+                    paimonDataType);
         }
 
         // generate values of computed columns
         for (ComputedColumn computedColumn : computedColumns) {
             String refName = computedColumn.fieldReference();
             DataType refType = schemaBuilder.getFieldType(refName);
+            if (refType == null) {
+                LOG.warn(
+                        "RefType Error: refName:{}, columnName:{}",
+                        refName,
+                        computedColumn.columnName());
+            }
             resultMap.put(
                     computedColumn.columnName(),
                     computedColumn.eval(resultMap.get(refName), refType));
