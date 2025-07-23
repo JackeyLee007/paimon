@@ -143,6 +143,8 @@ public abstract class SyncTableActionBase extends SynchronizationActionBase {
         } catch (Catalog.TableNotExistException e) {
             Schema retrievedSchema = retrieveSchema();
             computedColumns = buildComputedColumns(computedColumnArgs, retrievedSchema.fields());
+            LOG.info("{}.{} computedColumnArgs: {}", database, table, computedColumnArgs);
+            LOG.info("{}.{} Retrieved schema: {}", database, table, retrievedSchema);
             Schema paimonSchema = buildPaimonSchema(retrievedSchema);
             catalog.createTable(identifier, paimonSchema, false);
             fileStoreTable = (FileStoreTable) catalog.getTable(identifier);
