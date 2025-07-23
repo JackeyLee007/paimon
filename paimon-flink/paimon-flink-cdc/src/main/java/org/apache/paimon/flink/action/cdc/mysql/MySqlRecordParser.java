@@ -234,6 +234,9 @@ public class MySqlRecordParser implements FlatMapFunction<CdcSourceRecord, RichC
                                 + "Please make sure that `includeSchema` is true "
                                 + "in the JsonDebeziumDeserializationSchema you created");
 
+        LOG.info("extractRow RecordRow: {}", recordRow);
+        LOG.info("extractRow Schema: {}", schema.fields());
+
         Map<String, DebeziumEvent.Field> fields = schema.beforeAndAfterFields();
 
         ObjectMapper objectMapper = new ObjectMapper();
