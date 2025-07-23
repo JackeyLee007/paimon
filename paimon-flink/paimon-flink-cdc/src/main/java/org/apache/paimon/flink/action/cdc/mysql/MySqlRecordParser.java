@@ -248,23 +248,7 @@ public class MySqlRecordParser implements FlatMapFunction<CdcSourceRecord, RichC
         for (Map.Entry<String, DebeziumEvent.Field> field : fields.entrySet()) {
             String fieldName = field.getKey();
             String debeziumType = field.getValue().type();
-
-            JsonNode objectValue = recordRow.get(fieldName);
-            if (isNull(objectValue)) {
-                continue;
-            }
-
             String className = field.getValue().name();
-            String oldValue = objectValue.asText();
-            String newValue =
-                    DebeziumSchemaUtils.transformRawValue(
-                            oldValue,
-                            debeziumType,
-                            className,
-                            typeMapping,
-                            objectValue,
-                            serverTimeZone);
-            resultMap.put(fieldName, newValue);
 
             // record the field data type for computed columns reference
             JsonNode parametersNode = field.getValue().parameters();
@@ -285,6 +269,22 @@ public class MySqlRecordParser implements FlatMapFunction<CdcSourceRecord, RichC
                     className,
                     parametersMap,
                     paimonDataType);
+
+            JsonNode objectValue = recordRow.get(fieldName);
+            if (isNull(objectValue)) {
+                continue;
+            }
+
+            String oldValue = objectValue.asText();
+            String newValue =
+                    DebeziumSchemaUtils.transformRawValue(
+                            oldValue,
+                            debeziumType,
+                            className,
+                            typeMapping,
+                            objectValue,
+                            serverTimeZone);
+            resultMap.put(fieldName, newValue);
         }
 
         // generate values of computed columns
