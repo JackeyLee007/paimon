@@ -228,6 +228,7 @@ public interface Expression extends Serializable {
             String referencedFieldCheckForm =
                     StringUtils.toLowerCaseIfNeed(referencedField, caseSensitive);
 
+            // if fieldType is null, it would be provided during the evaluation
             DataType fieldType = typeMapping.get(referencedFieldCheckForm);
             return new ReferencedField(referencedField, fieldType, literals);
         }
