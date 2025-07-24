@@ -57,7 +57,7 @@ public interface Expression extends Serializable {
     DataType outputType();
 
     /** Compute value from given input. Input and output are serialized to string. */
-    String eval(String input, DataType inputType);
+    String eval(String input, @Nullable DataType inputType);
 
     /** Return name of this expression. */
     default String name() {
@@ -370,7 +370,7 @@ public interface Expression extends Serializable {
         }
 
         @Override
-        public String eval(String input, DataType inputType) {
+        public String eval(String input, @Nullable DataType inputType) {
             if (this.fieldReferenceType == null) {
                 this.fieldReferenceType = inputType;
 
@@ -534,7 +534,7 @@ public interface Expression extends Serializable {
         }
 
         @Override
-        public String eval(String input, DataType inputType) {
+        public String eval(String input, @Nullable DataType inputType) {
             try {
                 if (endExclusive == null) {
                     return input.substring(beginInclusive);
@@ -589,7 +589,10 @@ public interface Expression extends Serializable {
         }
 
         @Override
-        public String eval(String input, DataType inputType) {
+        public String eval(String input, @Nullable DataType inputType) {
+            checkArgument(
+                    inputType != null,
+                    "Field reference type must be set before evaluating the truncate expression.");
             this.fieldType = inputType;
             switch (fieldType.getTypeRoot()) {
                 case TINYINT:
@@ -673,7 +676,7 @@ public interface Expression extends Serializable {
         }
 
         @Override
-        public String eval(String input, DataType inputType) {
+        public String eval(String input, @Nullable DataType inputType) {
             return value;
         }
     }
@@ -696,7 +699,7 @@ public interface Expression extends Serializable {
         }
 
         @Override
-        public String eval(String input, DataType inputType) {
+        public String eval(String input, @Nullable DataType inputType) {
             return DateTimeUtils.formatLocalDateTime(LocalDateTime.now(), 3);
         }
     }
@@ -709,7 +712,7 @@ public interface Expression extends Serializable {
         }
 
         @Override
-        public String eval(String input, DataType inputType) {
+        public String eval(String input, @Nullable DataType inputType) {
             return StringUtils.toUpperCase(input);
         }
 
@@ -727,7 +730,7 @@ public interface Expression extends Serializable {
         }
 
         @Override
-        public String eval(String input, DataType inputType) {
+        public String eval(String input, @Nullable DataType inputType) {
             return StringUtils.toLowerCase(input);
         }
 
@@ -745,7 +748,7 @@ public interface Expression extends Serializable {
         }
 
         @Override
-        public String eval(String input, DataType inputType) {
+        public String eval(String input, @Nullable DataType inputType) {
             return StringUtils.trim(input);
         }
 
@@ -793,7 +796,7 @@ public interface Expression extends Serializable {
         }
 
         @Override
-        public String eval(String input, DataType inputType) {
+        public String eval(String input, @Nullable DataType inputType) {
             if (this.fieldReferenceType == null) {
                 checkArgument(
                         inputType.getTypeRoot() == DataTypeRoot.VARCHAR,
