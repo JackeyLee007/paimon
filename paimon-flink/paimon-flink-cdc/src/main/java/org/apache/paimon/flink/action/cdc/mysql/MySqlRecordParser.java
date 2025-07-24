@@ -290,20 +290,12 @@ public class MySqlRecordParser implements FlatMapFunction<CdcSourceRecord, RichC
         // generate values of computed columns
         for (ComputedColumn computedColumn : computedColumns) {
             String refName = computedColumn.fieldReference();
-            if (refName != null) {
-                DataType refType = schemaBuilder.getFieldType(refName);
-                if (refType == null) {
-                    LOG.warn(
-                            "RefType Error: refName:{}, columnName:{}",
-                            refName,
-                            computedColumn.columnName());
-                }
+            DataType refType = schemaBuilder.getFieldType(refName);
 
-                resultMap.put(
-                        computedColumn.columnName(),
-                        computedColumn.eval(resultMap.get(refName), refType));
-                schemaBuilder.column(computedColumn.columnName(), refType);
-            }
+            resultMap.put(
+                    computedColumn.columnName(),
+                    computedColumn.eval(resultMap.get(refName), refType));
+            schemaBuilder.column(computedColumn.columnName(), computedColumn.columnType());
         }
 
         for (CdcMetadataConverter metadataConverter : metadataConverters) {
