@@ -1163,26 +1163,26 @@ public class MySqlSyncTableActionITCase extends MySqlActionITCaseBase {
         RowType rowType =
                 RowType.of(
                         new DataType[] {
-                                DataTypes.INT().notNull(),
-                                DataTypes.DATE(),
-                                DataTypes.TIMESTAMP(0),
-                                DataTypes.TIMESTAMP(0),
-                                DataTypes.VARCHAR(10),
-                                DataTypes.INT(),
-                                DataTypes.STRING(),
-                                DataTypes.STRING(),
-                                DataTypes.STRING()
+                            DataTypes.INT().notNull(),
+                            DataTypes.DATE(),
+                            DataTypes.TIMESTAMP(0),
+                            DataTypes.TIMESTAMP(0),
+                            DataTypes.VARCHAR(10),
+                            DataTypes.INT(),
+                            DataTypes.STRING(),
+                            DataTypes.STRING(),
+                            DataTypes.STRING()
                         },
                         new String[] {
-                                "pk",
-                                "_date",
-                                "_datetime",
-                                "_timestamp",
-                                "_value",
-                                "_constant",
-                                "_upper",
-                                "_lower_of_upper",
-                                "_trim_lower"
+                            "pk",
+                            "_date",
+                            "_datetime",
+                            "_timestamp",
+                            "_value",
+                            "_constant",
+                            "_upper",
+                            "_lower_of_upper",
+                            "_trim_lower"
                         });
         List<String> expected =
                 Arrays.asList(
