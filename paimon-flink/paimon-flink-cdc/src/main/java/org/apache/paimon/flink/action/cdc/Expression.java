@@ -49,7 +49,7 @@ import static org.apache.paimon.utils.Preconditions.checkArgument;
 
 /** Produce a computation result for computed column. */
 public interface Expression extends Serializable {
-    static final Logger LOG = LoggerFactory.getLogger(Expression.class);
+    Logger LOG = LoggerFactory.getLogger(Expression.class);
 
     /** Return name of referenced field. */
     String fieldReference();
