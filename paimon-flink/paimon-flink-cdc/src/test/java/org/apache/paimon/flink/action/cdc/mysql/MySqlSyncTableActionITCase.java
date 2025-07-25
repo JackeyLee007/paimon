@@ -1135,6 +1135,7 @@ public class MySqlSyncTableActionITCase extends MySqlActionITCaseBase {
     @Timeout(60)
     public void testComputedColumnsCrossReference() throws Exception {
         Map<String, String> mySqlConfig = getBasicMySqlConfig();
+        mySqlConfig.put("database-name", DATABASE_NAME);
         mySqlConfig.put("table-name", "test_computed_column");
 
         List<String> computedColumnDefs =
