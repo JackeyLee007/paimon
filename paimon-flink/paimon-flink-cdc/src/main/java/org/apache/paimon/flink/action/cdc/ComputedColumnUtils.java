@@ -23,6 +23,9 @@ import org.apache.paimon.types.DataField;
 import org.apache.paimon.types.DataType;
 import org.apache.paimon.utils.Preconditions;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -36,6 +39,7 @@ import static org.apache.paimon.utils.Preconditions.checkArgument;
 
 /** Utility methods for {@link ComputedColumn}, such as build. */
 public class ComputedColumnUtils {
+    private static final Logger LOG = LoggerFactory.getLogger(ComputedColumnUtils.class);
 
     public static List<ComputedColumn> buildComputedColumns(
             List<String> computedColumnArgs, List<DataField> physicFields) {
@@ -74,6 +78,11 @@ public class ComputedColumnUtils {
             String[] args = expression.substring(left + 1, right).split(",");
             checkArgument(args.length >= 1, "Computed column needs at least one argument.");
 
+            LOG.info(
+                    "Building computed column: {} = {}({})",
+                    columnName,
+                    exprName,
+                    String.join(", ", args));
             computedColumns.add(
                     new ComputedColumn(
                             columnName,
