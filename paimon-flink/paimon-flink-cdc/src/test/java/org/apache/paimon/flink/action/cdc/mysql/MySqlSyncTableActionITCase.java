@@ -1142,7 +1142,7 @@ public class MySqlSyncTableActionITCase extends MySqlActionITCaseBase {
                 Arrays.asList(
                         "_lower_of_upper=lower(_upper)",
                         "_upper=upper(_value)",
-                        "_trim_lower=trim(_lower)",
+                        "_trim_lower=trim(_lower_of_upper)",
                         "_constant=cast(11,INT)");
 
         MySqlSyncTableAction action =
@@ -1169,8 +1169,8 @@ public class MySqlSyncTableActionITCase extends MySqlActionITCaseBase {
                             DataTypes.TIMESTAMP(0),
                             DataTypes.TIMESTAMP(0),
                             DataTypes.VARCHAR(10),
-                            DataTypes.INT(),
                             DataTypes.STRING(),
+                            DataTypes.INT().notNull(),
                             DataTypes.STRING(),
                             DataTypes.STRING()
                         },
@@ -1180,17 +1180,19 @@ public class MySqlSyncTableActionITCase extends MySqlActionITCaseBase {
                             "_datetime",
                             "_timestamp",
                             "_value",
-                            "_constant",
                             "_upper",
+                            "_constant",
                             "_lower_of_upper",
                             "_trim_lower"
                         });
         List<String> expected =
                 Arrays.asList(
                         // sort according to reference
-                        "+I[1, 19439, 2022-01-01T14:30, 2021-09-15T15:00:10, 11,  VALUE ,  value , value]",
-                        "+I[2, 19439, NULL, NULL, NULL, 11, NULL, NULL, NULL]");
-        waitForResult(expected, table, rowType, Arrays.asList("pk", "_year_date"));
+
+                        "+I[1, 19439, 2022-01-01T14:30, 2021-09-15T15:00:10,  vaLUE ,  VALUE , 11,  value , value]",
+                        "+I[2, 19439, NULL, NULL, NULL, NULL, 11, NULL, NULL]");
+
+        waitForResult(expected, table, rowType, Arrays.asList("pk"));
     }
 
     @Test
