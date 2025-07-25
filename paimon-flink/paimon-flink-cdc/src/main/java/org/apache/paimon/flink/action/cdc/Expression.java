@@ -29,6 +29,9 @@ import org.apache.paimon.utils.DateTimeUtils;
 import org.apache.paimon.utils.SerializableSupplier;
 import org.apache.paimon.utils.StringUtils;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import javax.annotation.Nullable;
 
 import java.io.Serializable;
@@ -46,6 +49,7 @@ import static org.apache.paimon.utils.Preconditions.checkArgument;
 
 /** Produce a computation result for computed column. */
 public interface Expression extends Serializable {
+    static final Logger LOG = LoggerFactory.getLogger(Expression.class);
 
     /** Return name of referenced field. */
     String fieldReference();
@@ -768,6 +772,11 @@ public interface Expression extends Serializable {
                 String fieldReference, @Nullable DataType fieldType, String... literals) {
             this.fieldReference = fieldReference;
             this.fieldReferenceType = fieldType;
+            LOG.info(
+                    "arguments: reference: {}, fieldType: {}, literals: {}",
+                    fieldReference,
+                    fieldType,
+                    String.join(",", literals));
             checkArgument(
                     fieldType == null || fieldType.getTypeRoot() == DataTypeRoot.VARCHAR,
                     String.format(
