@@ -58,6 +58,11 @@ public class ComputedColumnUtils {
             String exprName = columnArg.getValue().f0.trim();
             String[] args = columnArg.getValue().f1;
 
+            LOG.info(
+                    "Building computed column: {} = {}",
+                    columnName,
+                    exprName + "(" + String.join(", ", args) + ")");
+
             computedColumns.add(
                     new ComputedColumn(
                             columnName,
