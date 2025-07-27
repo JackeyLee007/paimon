@@ -32,6 +32,9 @@ import org.apache.paimon.shade.jackson2.com.fasterxml.jackson.annotation.JsonIgn
 import org.apache.paimon.shade.jackson2.com.fasterxml.jackson.annotation.JsonInclude;
 import org.apache.paimon.shade.jackson2.com.fasterxml.jackson.annotation.JsonProperty;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import javax.annotation.Nullable;
 
 import java.util.ArrayList;
@@ -54,6 +57,7 @@ import java.util.stream.Collectors;
 @Public
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class Schema {
+    private static final Logger LOG = LoggerFactory.getLogger(Schema.class);
 
     private static final String FIELD_FIELDS = "fields";
     private static final String FIELD_PARTITION_KEYS = "partitionKeys";
@@ -380,6 +384,13 @@ public class Schema {
 
         /** Returns an instance of an unresolved {@link Schema}. */
         public Schema build() {
+            LOG.info(
+                    "Building schema with columns: {}, partition keys: {}, primary keys: {}, options: {}, comment: {}",
+                    columns,
+                    partitionKeys,
+                    primaryKeys,
+                    options,
+                    comment);
             return new Schema(columns, partitionKeys, primaryKeys, options, comment);
         }
     }
