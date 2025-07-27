@@ -144,6 +144,8 @@ public class CdcActionITCaseBase extends ActionITCaseBase {
 
         // wait for table schema to become our expected schema
         while (true) {
+            LOG.info("expected schema: {}", rowType.asSQLString());
+            LOG.info("actual schema: {}", table.schema().toString());
             if (rowType.getFieldCount() == table.schema().fields().size()) {
                 int cnt = 0;
                 for (int i = 0; i < table.schema().fields().size(); i++) {
