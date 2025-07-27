@@ -781,7 +781,9 @@ public interface Expression extends Serializable {
                     fieldType == null || fieldType.getTypeRoot() == DataTypeRoot.VARCHAR,
                     String.format(
                             "'%s' expression only supports type root of '%s', but found '%s'.",
-                            name(), DataTypeRoot.VARCHAR, fieldType.getTypeRoot()));
+                            name(),
+                            DataTypeRoot.VARCHAR,
+                            fieldType == null ? "null" : fieldType.getTypeRoot()));
             checkArgument(
                     literals.length == 0,
                     String.format(
