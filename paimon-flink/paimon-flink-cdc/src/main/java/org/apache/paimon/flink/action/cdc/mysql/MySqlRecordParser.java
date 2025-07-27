@@ -62,6 +62,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static org.apache.paimon.flink.action.cdc.TypeMapping.TypeMappingMode.TO_NULLABLE;
 import static org.apache.paimon.utils.JsonSerdeUtil.isNull;
@@ -235,11 +236,13 @@ public class MySqlRecordParser implements FlatMapFunction<CdcSourceRecord, RichC
                                 + "in the JsonDebeziumDeserializationSchema you created");
 
         LOG.info("extractRow RecordRow: {}", recordRow);
-        LOG.info("extractRow Schema: {}", schema.fields());
+        LOG.info(
+                "extractRow Schema: {}",
+                schema.fields().stream()
+                        .map(f -> f.name() + ":" + f.type())
+                        .collect(Collectors.joining()));
 
         Map<String, DebeziumEvent.Field> fields = schema.beforeAndAfterFields();
-
-        ObjectMapper objectMapper = new ObjectMapper();
 
         CdcSchema.Builder schemaBuilder = CdcSchema.newBuilder();
 
@@ -287,12 +290,24 @@ public class MySqlRecordParser implements FlatMapFunction<CdcSourceRecord, RichC
             resultMap.put(fieldName, newValue);
         }
 
+        LOG.info("extractRow ResultMap: {}", resultMap);
+
         // generate values of computed columns
         for (ComputedColumn computedColumn : computedColumns) {
             String refName = computedColumn.fieldReference();
             DataType refType = schemaBuilder.getFieldType(refName);
 
+            LOG.info(
+                    "eval: computedColumn:{}, refName:{}, refType:{}, resultMap:{}",
+                    computedColumn.columnName(),
+                    refName,
+                    refType,
+                    resultMap);
             resultMap.put(
+                    computedColumn.columnName(),
+                    computedColumn.eval(resultMap.get(refName), refType));
+            LOG.info(
+                    "eval: computedColumn:{},  result:{}",
                     computedColumn.columnName(),
                     computedColumn.eval(resultMap.get(refName), refType));
             schemaBuilder.column(computedColumn.columnName(), computedColumn.columnType());
