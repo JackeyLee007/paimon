@@ -1188,7 +1188,7 @@ public class MySqlSyncTableActionITCase extends MySqlActionITCaseBase {
         List<String> expected =
                 Arrays.asList(
                         // sort according to reference
-                        "+I[1, 19439, 2022-01-01T14:30, 2021-09-15T15:00:10, 11,  VALUE ,  value , value]",
+                        "+I[1, 19439, 2022-01-01T14:30, 2021-09-15T15:00:10,  vaLUE , 11,  VALUE ,  value , value]",
                         "+I[2, 19439, NULL, NULL, NULL, 11, NULL, NULL, NULL]");
         waitForResult(expected, table, rowType, Arrays.asList("pk"));
     }
