@@ -1169,8 +1169,8 @@ public class MySqlSyncTableActionITCase extends MySqlActionITCaseBase {
                             DataTypes.TIMESTAMP(0),
                             DataTypes.TIMESTAMP(0),
                             DataTypes.VARCHAR(10),
-                            DataTypes.INT().notNull(),
                             DataTypes.STRING(),
+                            DataTypes.INT().notNull(),
                             DataTypes.STRING(),
                             DataTypes.STRING()
                         },
@@ -1188,8 +1188,8 @@ public class MySqlSyncTableActionITCase extends MySqlActionITCaseBase {
         List<String> expected =
                 Arrays.asList(
                         // sort according to reference
-                        "+I[1, 19439, 2022-01-01T14:30, 2021-09-15T15:00:10,  vaLUE , 11,  VALUE ,  value , value]",
-                        "+I[2, 19439, NULL, NULL, NULL, 11, NULL, NULL, NULL]");
+                        "+I[1, 19439, 2022-01-01T14:30, 2021-09-15T15:00:10,  vaLUE ,  VALUE , 11,  value , value]",
+                        "+I[2, 19439, NULL, NULL, NULL, NULL, 11, NULL, NULL]");
         waitForResult(expected, table, rowType, Arrays.asList("pk"));
     }
 
