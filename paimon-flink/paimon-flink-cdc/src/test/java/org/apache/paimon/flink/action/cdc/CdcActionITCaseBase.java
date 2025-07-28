@@ -154,6 +154,13 @@ public class CdcActionITCaseBase extends ActionITCaseBase {
                     boolean sameType = field.type().equals(rowType.getFieldTypes().get(i));
                     if (sameName && sameType) {
                         cnt++;
+                    } else {
+                        LOG.info(
+                                "No-Match field expected: {}:{}, actual: {}:{}.",
+                                rowType.getFieldNames().get(i),
+                                rowType.getFieldTypes().get(i).asSQLString(),
+                                field.name(),
+                                field.type().asSQLString());
                     }
                 }
                 if (cnt == rowType.getFieldCount()) {
