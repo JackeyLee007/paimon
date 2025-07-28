@@ -1170,7 +1170,7 @@ public class MySqlSyncTableActionITCase extends MySqlActionITCaseBase {
                             DataTypes.TIMESTAMP(0),
                             DataTypes.VARCHAR(10),
                             DataTypes.STRING(),
-                            DataTypes.INT().notNull(),
+                            DataTypes.INT(),
                             DataTypes.STRING(),
                             DataTypes.STRING()
                         },
