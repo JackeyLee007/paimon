@@ -23,7 +23,6 @@ import org.apache.paimon.types.DataType;
 import org.apache.paimon.utils.DfsSort;
 import org.apache.paimon.utils.Preconditions;
 
-
 import org.apache.flink.api.java.tuple.Tuple2;
 
 import java.util.ArrayList;
