@@ -124,6 +124,7 @@ public abstract class SyncTableActionBase extends SynchronizationActionBase {
                 LOG.info("{}.{} computedColumnArgs: {}", database, table, computedColumnArgs);
                 LOG.info("{}.{} Retrieved schema: {}", database, table, retrievedSchema);
                 Schema paimonSchema = buildPaimonSchema(retrievedSchema);
+                LOG.info("paimonSchema: {}", paimonSchema.toString());
                 assertSchemaCompatible(fileStoreTable.schema(), paimonSchema.fields());
             } catch (SchemaRetrievalException e) {
                 LOG.info(
