@@ -872,7 +872,6 @@ public class MySqlSyncTableActionITCase extends MySqlActionITCaseBase {
         if (executeMysql) {
             try (Statement statement = getStatement()) {
                 statement.execute("USE " + DATABASE_NAME);
-                statement.execute("TRUNCATE TABLE test_computed_column");
                 statement.executeUpdate(
                         "INSERT INTO test_computed_column VALUES (1, '2023-03-23', '2022-01-01 14:30', '2021-09-15 15:00:10', ' vaLUE ')");
                 statement.executeUpdate(
@@ -1137,7 +1136,7 @@ public class MySqlSyncTableActionITCase extends MySqlActionITCaseBase {
     public void testComputedColumnsCrossReference() throws Exception {
         Map<String, String> mySqlConfig = getBasicMySqlConfig();
         mySqlConfig.put("database-name", DATABASE_NAME);
-        mySqlConfig.put("table-name", "test_computed_column");
+        mySqlConfig.put("table-name", "test_computed_column2");
 
         List<String> computedColumnDefs =
                 Arrays.asList(
@@ -1155,11 +1154,10 @@ public class MySqlSyncTableActionITCase extends MySqlActionITCaseBase {
 
         try (Statement statement = getStatement()) {
             statement.execute("USE " + DATABASE_NAME);
-            statement.execute("TRUNCATE TABLE test_computed_column");
             statement.executeUpdate(
-                    "INSERT INTO test_computed_column VALUES (11, '2023-03-23', '2022-01-01 14:30', '2021-09-15 15:00:10', ' vaLUE ')");
+                    "INSERT INTO test_computed_column2 VALUES (1, '2023-03-23', '2022-01-01 14:30', '2021-09-15 15:00:10', ' vaLUE ')");
             statement.executeUpdate(
-                    "INSERT INTO test_computed_column VALUES (12, '2023-03-23', null, null, null)");
+                    "INSERT INTO test_computed_column2 VALUES (2, '2023-03-23', null, null, null)");
         }
 
         FileStoreTable table = getFileStoreTable();
