@@ -15,7 +15,7 @@
 #  See the License for the specific language governing permissions and
 # limitations under the License.
 ################################################################################
-name: UTCase and ITCase Flink 1.x
+name: UTCase and ITCase Flink 1.x-cdc
 
 on:
   push:
