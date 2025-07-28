@@ -159,6 +159,13 @@ public class CdcActionITCaseBase extends ActionITCaseBase {
                 if (cnt == rowType.getFieldCount()) {
                     break;
                 }
+                LOG.info("Match schema stops at {}/{}.", cnt, rowType.getFieldCount());
+                if (cnt > 0) {
+                    LOG.info(
+                            "Last matched {} - {}.",
+                            rowType.getFieldNames().get(cnt - 1),
+                            rowType.getFieldTypes().get(cnt - 1).asSQLString());
+                }
             }
             table = table.copyWithLatestSchema();
             Thread.sleep(1000);
