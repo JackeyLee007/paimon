@@ -522,7 +522,7 @@ public class TagAutoManagerTest extends PrimaryKeyTableTestBase {
     }
 
     @Test
-    public void testAutoTagCreationEnsureAtLeastOne(){
+    public void testAutoTagCreationEnsureAtLeastOne() {
         Options options = new Options();
         options.set(TAG_AUTOMATIC_CREATION, TagCreationMode.WATERMARK);
         options.set(TAG_CREATION_PERIOD, TagCreationPeriod.DAILY);
@@ -531,7 +531,7 @@ public class TagAutoManagerTest extends PrimaryKeyTableTestBase {
         TagManager tagManager = table.store().newTagManager();
 
         // auto-tag
-        commit.commitMultiple(Collections.emptyList(),false);
+        commit.commitMultiple(Collections.emptyList(), false);
         assertThat(tagManager.allTagNames()).containsOnly("2023-07-17");
 
         // create a tag in auto-tag format should incur an exception
