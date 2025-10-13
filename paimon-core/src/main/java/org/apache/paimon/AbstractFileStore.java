@@ -445,11 +445,13 @@ abstract class AbstractFileStore<T> implements FileStore<T> {
 
     @Override
     public TagAutoManager newTagAutoManager(FileStoreTable table) {
+
         return TagAutoManager.create(
                 options,
                 snapshotManager(),
                 newTagManager(),
                 newTagDeletion(),
+                table.newBatchWriteBuilder().newCommit(),
                 createTagCallbacks(table));
     }
 

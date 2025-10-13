@@ -521,6 +521,23 @@ public class TagAutoManagerTest extends PrimaryKeyTableTestBase {
         assertThat(tagManager.allTagNames()).containsOnly("20230718");
     }
 
+    @Test
+    public void testAutoTagCreationEnsureAtLeastOne(){
+        Options options = new Options();
+        options.set(TAG_AUTOMATIC_CREATION, TagCreationMode.WATERMARK);
+        options.set(TAG_CREATION_PERIOD, TagCreationPeriod.DAILY);
+        FileStoreTable table = this.table.copy(options.toMap());
+        TableCommitImpl commit = table.newCommit(commitUser).ignoreEmptyCommit(false);
+        TagManager tagManager = table.store().newTagManager();
+
+        // auto-tag
+        commit.commitMultiple(Collections.emptyList(),false);
+        assertThat(tagManager.allTagNames()).containsOnly("2023-07-17");
+
+        // create a tag in auto-tag format should incur an exception
+        assertThrows(RuntimeException.class, () -> table.createTag("2023-07-18", 1));
+    }
+
     private long localZoneMills(String timestamp) {
         return LocalDateTime.parse(timestamp)
                 .atZone(ZoneId.systemDefault())

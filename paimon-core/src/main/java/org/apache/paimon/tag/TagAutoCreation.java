@@ -21,6 +21,7 @@ package org.apache.paimon.tag;
 import org.apache.paimon.CoreOptions;
 import org.apache.paimon.Snapshot;
 import org.apache.paimon.operation.TagDeletion;
+import org.apache.paimon.table.sink.BatchTableCommit;
 import org.apache.paimon.table.sink.TagCallback;
 import org.apache.paimon.tag.TagTimeExtractor.ProcessTimeExtractor;
 import org.apache.paimon.tag.TagTimeExtractor.WatermarkExtractor;
@@ -36,6 +37,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.SortedMap;
@@ -52,6 +54,7 @@ public class TagAutoCreation {
     private final SnapshotManager snapshotManager;
     private final TagManager tagManager;
     private final TagDeletion tagDeletion;
+    private final BatchTableCommit committer;
     private final TagTimeExtractor timeExtractor;
     private final TagPeriodHandler periodHandler;
     private final Duration delay;
@@ -68,6 +71,7 @@ public class TagAutoCreation {
             SnapshotManager snapshotManager,
             TagManager tagManager,
             TagDeletion tagDeletion,
+            BatchTableCommit committer,
             TagTimeExtractor timeExtractor,
             TagPeriodHandler periodHandler,
             Duration delay,
@@ -79,6 +83,7 @@ public class TagAutoCreation {
         this.snapshotManager = snapshotManager;
         this.tagManager = tagManager;
         this.tagDeletion = tagDeletion;
+        this.committer = committer;
         this.timeExtractor = timeExtractor;
         this.periodHandler = periodHandler;
         this.delay = delay;
@@ -135,6 +140,8 @@ public class TagAutoCreation {
             if (snapshotManager.snapshotExists(nextSnapshot)) {
                 tryToCreateTags(snapshotManager.snapshot(nextSnapshot));
                 nextSnapshot++;
+            } else if (forceCreatingSnapshot()) {
+                committer.commit(Collections.emptyList());
             } else {
                 // avoid snapshot has been expired
                 Long earliest = snapshotManager.earliestSnapshotId();
@@ -214,6 +221,7 @@ public class TagAutoCreation {
             SnapshotManager snapshotManager,
             TagManager tagManager,
             TagDeletion tagDeletion,
+            BatchTableCommit committer,
             List<TagCallback> callbacks) {
         TagTimeExtractor extractor = TagTimeExtractor.createForAutoTag(options);
         if (extractor == null) {
@@ -223,6 +231,7 @@ public class TagAutoCreation {
                 snapshotManager,
                 tagManager,
                 tagDeletion,
+                committer,
                 extractor,
                 TagPeriodHandler.create(options),
                 options.tagCreationDelay(),
