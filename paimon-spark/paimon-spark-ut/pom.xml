@@ -118,7 +118,7 @@ under the License.
                         </goals>
                         <configuration>
                             <includes>
-=                               <include>**/TriggerTagAutomaticCreationProcedureTest.scala</include>
+                               <include>**/TriggerTagAutomaticCreationProcedureTest.scala</include>
                             </includes>
                         </configuration>
                     </execution>
